@@ -66,6 +66,11 @@ mkdir -p /opt/etc/kzlp/backups /opt/www/kzlp
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+if [ -f "$REPO_ROOT/scripts/zapret-install.sh" ]; then
+  echo "[2a] Kurulum scriptleri..."
+  cp -f "$REPO_ROOT/scripts/zapret-install.sh" "$REPO_ROOT/scripts/isp-profiles.sh" /opt/etc/kzlp/
+  chmod +x /opt/etc/kzlp/zapret-install.sh /opt/etc/kzlp/isp-profiles.sh
+fi
 if [ -f "$REPO_ROOT/www/kzlp/api.cgi" ]; then
   echo "[2b] Panel dosyalari kopyalaniyor..."
   cp -f "$REPO_ROOT/www/kzlp/"* /opt/www/kzlp/

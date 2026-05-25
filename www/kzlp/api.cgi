@@ -56,6 +56,73 @@ zapret_running() {
   pgrep -f '/opt/zapret/nfq/nfqws' >/dev/null 2>&1
 }
 
+zapret_installed() {
+  [ -x "$ZAPRET/nfq/nfqws" ] && [ -f "$ZAPRET/config" ]
+}
+
+detect_wan_iface() {
+  wan=$(ip -4 route show default 2>/dev/null | awk '$1=="default" && $2=="dev" {print $3; exit}')
+  [ -z "$wan" ] && wan=$(ip -4 route show default 2>/dev/null | awk '{print $3; exit}')
+  [ -z "$wan" ] && wan="ppp0"
+  echo "$wan"
+}
+
+detect_keenetic_model() {
+  m=""
+  if [ -x /bin/ndmc ]; then
+    m=$(LD_LIBRARY_PATH= ndmc -c 'show version' 2>/dev/null | tr -d '\r\033' | tr -d '[]K' \
+      | awk -F': ' '/^[[:space:]]*description:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
+    [ -z "$m" ] && m=$(LD_LIBRARY_PATH= ndmc -c 'show version' 2>/dev/null | tr -d '\r\033' | tr -d '[]K' \
+      | awk -F': ' '/^[[:space:]]*model:/{gsub(/^[[:space:]]+/,"",$2); print "Keenetic "$2; exit}')
+  fi
+  [ -z "$m" ] && m=$(cat /proc/device-tree/model 2>/dev/null | tr -d '\0')
+  [ -z "$m" ] && m="Keenetic"
+  m=$(echo "$m" | sed 's/^eenetic/Keenetic/')
+  echo "$m"
+}
+
+detect_isp_id() {
+  domain=""
+  cache="$KZLP_DIR/detected.isp"
+  if [ -f /opt/var/run/kzlp_iss.cache ]; then
+    domain=$(cat /opt/var/run/kzlp_iss.cache 2>/dev/null | tr -d '[:space:]')
+  fi
+  if [ -z "$domain" ] && [ -x /bin/ndmc ]; then
+    domain=$(LD_LIBRARY_PATH= ndmc -c 'show running-config' 2>/dev/null \
+      | grep 'authentication identity' | grep -o '@[^[:space:]]*' | head -1)
+    [ -n "$domain" ] && echo "$domain" > /opt/var/run/kzlp_iss.cache 2>/dev/null
+  fi
+  case "$domain" in
+    @ttnet) echo "turktelekom" ;;
+    @superonline|@fiber) echo "superonline" ;;
+    @vodafone) echo "vodafone" ;;
+    @kablofiber) echo "kablofiber" ;;
+    @kablonet|@turksat) echo "kablonet" ;;
+    @turk.net) echo "turknet" ;;
+    *) [ -f "$KZLP_DIR/installed.isp" ] && cat "$KZLP_DIR/installed.isp" 2>/dev/null || echo "generic" ;;
+  esac
+}
+
+isp_list_json() {
+  echo -n '[
+{"id":"kablonet","name":"Kablonet (Turksat)"},
+{"id":"kablofiber","name":"Kablonet Fiber"},
+{"id":"turktelekom","name":"Turk Telekom"},
+{"id":"superonline","name":"Superonline"},
+{"id":"turknet","name":"TurkNet"},
+{"id":"vodafone","name":"Vodafone"},
+{"id":"generic","name":"Diger / Genel profil"}
+]'
+}
+
+valid_isp_id() {
+  case "$1" in
+    kablonet|kablofiber|turksat|turktelekom|ttnet|superonline|sol|turknet|vodafone|generic)
+      return 0 ;;
+  esac
+  return 1
+}
+
 installed_version() {
   v=$(cat "$VERSION_FILE" 2>/dev/null | tr -d '\n\r')
   [ -n "$v" ] && echo "$v" || echo "bilinmiyor"
@@ -187,8 +254,10 @@ case "$ACTION" in
   status)
     running=false
     zapret_running && running=true
+    zinst=false
+    zapret_installed && zinst=true
     wan=$(grep '^IFACE_WAN=' "$ZAPRET/config" 2>/dev/null | tail -1 | sed 's/^IFACE_WAN=//;s/"//g' | tr -d '\r\n')
-    [ -z "$wan" ] && wan="ppp0"
+    [ -z "$wan" ] && wan=$(detect_wan_iface)
     wan=$(json_escape "$wan")
     users=$(policy_users_json)
     exc=0
@@ -196,9 +265,50 @@ case "$ACTION" in
       exc=$(grep -vE '^#|^$|^[0-9.:a-fA-F/]' "$EXCLUDE" 2>/dev/null | wc -l | tr -d ' ')
     fi
     ver=$(installed_version)
-    json_ok "{\"running\":$running,\"installed_version\":\"$ver\",\"policy_mode\":true,\"policy_mark\":\"$POLICY_MARK\",\"policy_users\":$users,\"exceptions_count\":$exc,\"wan\":\"$wan\"}"
+    json_ok "{\"running\":$running,\"zapret_installed\":$zinst,\"installed_version\":\"$ver\",\"policy_mode\":true,\"policy_mark\":\"$POLICY_MARK\",\"policy_users\":$users,\"exceptions_count\":$exc,\"wan\":\"$wan\"}"
+    ;;
+  install_info)
+    zinst=false
+    zapret_installed && zinst=true
+    model=$(json_escape "$(detect_keenetic_model)")
+    isp=$(detect_isp_id)
+    wan=$(json_escape "$(detect_wan_iface)")
+    arch=$(json_escape "$(uname -m 2>/dev/null)")
+    inst_isp=""
+    [ -f "$KZLP_DIR/installed.isp" ] && inst_isp=$(cat "$KZLP_DIR/installed.isp" 2>/dev/null | tr -d '\r\n')
+    inst_isp=$(json_escape "$inst_isp")
+    _st="idle"
+    [ -f /opt/tmp/kzlp_install.status ] && _st=$(cat /opt/tmp/kzlp_install.status 2>/dev/null | tr -d '\r\n')
+    _st=$(json_escape "$_st")
+    json_ok "{\"zapret_installed\":$zinst,\"model\":\"$model\",\"arch\":\"$arch\",\"detected_isp\":\"$isp\",\"installed_isp\":\"$inst_isp\",\"wan\":\"$wan\",\"isps\":$(isp_list_json),\"install_status\":\"$_st\"}"
+    ;;
+  install_start)
+    isp=$(urldecode "$(post_param isp)")
+    [ -z "$isp" ] && isp=$(detect_isp_id)
+    valid_isp_id "$isp" || json_err "Gecersiz ISS"
+    if [ -f /opt/tmp/kzlp_install.status ] && [ "$(cat /opt/tmp/kzlp_install.status 2>/dev/null)" = "running" ]; then
+      json_err "Kurulum zaten calisiyor"
+    fi
+    mkdir -p "$KZLP_DIR" /opt/tmp
+    inst="$KZLP_DIR/zapret-install.sh"
+    [ -x "$inst" ] || json_err "Kurulum scripti yok. Panel deploy calistirin: scripts/deploy.sh"
+    rm -f /opt/tmp/kzlp_install.done
+    echo "running" > /opt/tmp/kzlp_install.status
+    : > /opt/tmp/kzlp_install.log
+    ( "$inst" "$isp" >> /opt/tmp/kzlp_install.log 2>&1 ) &
+    json_ok "{\"started\":true,\"isp\":\"$isp\"}"
+    ;;
+  install_status)
+    st="idle"
+    [ -f /opt/tmp/kzlp_install.status ] && st=$(cat /opt/tmp/kzlp_install.status 2>/dev/null | tr -d '\r\n')
+    log=""
+    [ -f /opt/tmp/kzlp_install.log ] && log=$(tail -n 80 /opt/tmp/kzlp_install.log 2>/dev/null | json_escape)
+    zinst=false
+    zapret_installed && zinst=true
+    json_ok "{\"status\":\"$st\",\"log_tail\":\"$log\",\"zapret_installed\":$zinst}"
     ;;
   control)
+    zapret_installed || json_err "Zapret kurulu degil"
     cmd=$(urldecode "$(post_param cmd)")
     case "$cmd" in
       start|stop|restart) ;;
@@ -242,7 +352,7 @@ case "$ACTION" in
     ;;
   sites_list)
     _learn=false
-    learning_enabled && _learn=true
+    zapret_installed && learning_enabled && _learn=true
     _log=$(auto_log_tail 40)
     json_ok "{\"exclude\":$(domains_file_to_json "$EXCLUDE"),\"user\":$(domains_file_to_json "$USER_HOSTS"),\"learned\":$(domains_file_to_json "$AUTO_HOSTS"),\"learning_enabled\":$_learn,\"log_tail\":\"$_log\"}"
     ;;
