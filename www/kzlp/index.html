@@ -147,7 +147,8 @@
     }
     button:hover { background: #2d3d56; }
     button.primary { background: var(--accent); border-color: var(--accent); }
-    button.primary:hover { filter: brightness(1.1); }
+    button.primary:hover:not(:disabled) { filter: brightness(1.1); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
     button.danger { border-color: var(--bad); color: #fecaca; }
     button.site-tab.primary { background: var(--accent); border-color: var(--accent); }
     button.site-tab:not(.primary) { opacity: 0.85; }
@@ -339,7 +340,7 @@
       <h2>ISS seçimi</h2>
       <div class="row">
         <select id="ispSelect"></select>
-        <button type="button" id="btnInstall" class="primary">Zapret kur / yeniden kur</button>
+        <button type="button" id="btnInstall" class="primary" disabled>Zapret kur / yeniden kur</button>
       </div>
       <p class="info" id="installHint">Kurulum GitHub’dan zapret indirir, ISS profiline göre ayarlar ve başlatır (1–3 dk).</p>
       <div id="installMsg" class="msg"></div>
@@ -422,6 +423,17 @@
         sum.textContent = 'Eksik zorunlu bileşen var — kuruluma devam etmeden önce Keenetic OPKG paketlerini yükleyin.';
         sum.style.color = 'var(--bad)';
       }
+      updateInstallButton(data);
+    }
+
+    function updateInstallButton(data) {
+      const btn = document.getElementById('btnInstall');
+      const mandatoryMissing = (data.requirements || []).some(r => r.mandatory && !r.installed);
+      const running = data.install_status === 'running';
+      btn.disabled = mandatoryMissing || running;
+      btn.title = mandatoryMissing
+        ? 'Zorunlu bileşenler tamamlanmadan kurulum yapılamaz'
+        : (running ? 'Kurulum devam ediyor' : '');
     }
 
     async function loadInstallInfo() {
@@ -470,7 +482,6 @@
       logEl.scrollTop = logEl.scrollHeight;
       if (j.data.status === 'running') return;
       stopInstallPoll();
-      document.getElementById('btnInstall').disabled = false;
       if (j.data.status === 'done' && j.data.zapret_installed) {
         showMsg('installMsg', 'Kurulum tamamlandi.', true);
         toast('Zapret kuruldu');
@@ -481,10 +492,13 @@
       } else {
         showMsg('installMsg', 'Kurulum hata ile bitti. Logu kontrol edin.', false);
       }
+      if (installInfo) updateInstallButton(installInfo);
+      else await loadInstallInfo();
     }
 
     document.getElementById('btnInstall').onclick = async () => {
-      if (installInfo && !installInfo.requirements_ok) {
+      const mandatoryMissing = installInfo && (installInfo.requirements || []).some(r => r.mandatory && !r.installed);
+      if (mandatoryMissing) {
         toast('Önce zorunlu bileşenleri kurun', true);
         return;
       }
@@ -497,10 +511,12 @@
       document.getElementById('installLog').textContent = '';
       const j = await api('install_start', { isp });
       if (!j.ok) {
-        btn.disabled = false;
         showMsg('installMsg', j.error, false);
+        if (installInfo) updateInstallButton(installInfo);
         return;
       }
+      installInfo = { ...installInfo, install_status: 'running' };
+      updateInstallButton(installInfo);
       stopInstallPoll();
       installPoll = setInterval(pollInstallStatus, 2000);
       pollInstallStatus();
@@ -710,8 +726,8 @@
         } else {
           showPage('dashboard');
         }
+        updateInstallButton(info);
         if (info.install_status === 'running') {
-          document.getElementById('btnInstall').disabled = true;
           installPoll = setInterval(pollInstallStatus, 2000);
           pollInstallStatus();
         }
