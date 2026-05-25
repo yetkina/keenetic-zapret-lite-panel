@@ -58,6 +58,23 @@ Tarayıcıda: `http://192.168.53.1:8088/`
 
 ## Kullanım
 
+### Sol menü
+
+| Menü | Açıklama |
+|------|----------|
+| **Panel** | Durum, politika cihazları, siteler, yedek, güncelleme |
+| **Zapret Kurulum** | Zapret yoksa otomatik açılır; model + ISS seçerek kurulum |
+
+Panel açıldığında **Zapret kurulu mu** kontrol edilir. Kurulu değilse **Zapret Kurulum** sayfasına yönlendirilirsiniz.
+
+### Zapret Kurulum sihirbazı
+
+1. **Model** — `ndmc show version` ile otomatik (ör. Keenetic Hero KN-1012)
+2. **ISS** — PPPoE kimliğinden tahmin (`@kablonet`, `@ttnet` …) veya listeden seçim
+3. **Kur** — GitHub’dan [bol-van/zapret](https://github.com/bol-van/zapret) indirilir, ISS profiline göre `NFQWS_OPT` ayarlanır, politika modu (`FILTER_MARK=0xffffaaa`) etkinleştirilir
+
+Desteklenen ISS profilleri (klasik nfqws): Kablonet, Kablonet Fiber, Turk Telekom, Superonline, TurkNet, Vodafone, Genel.
+
 ### Zapret politikası — cihazlar
 
 - Keenetic web arayüzü → **Bağlantı kuralı** → **Zapret** → cihaz ekleyin/çıkarın.
