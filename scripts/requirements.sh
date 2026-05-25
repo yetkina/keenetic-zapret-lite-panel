@@ -46,14 +46,6 @@ requirements_json() {
   _add "kmod_fs" "Dosya sistemleri çekirdek modülleri" "$_ok" 1
 
   _ok=0
-  _kzlp_any_kmod "uvcvideo.ko" && _ok=1
-  _add "kmod_usb_video" "USB Video çekirdek modülleri" "$_ok" 0
-
-  _ok=0
-  find /lib/modules -maxdepth 2 -name 'snd-usb*.ko' 2>/dev/null | grep -q . && _ok=1
-  _add "kmod_usb_audio" "USB Ses çekirdek modülleri" "$_ok" 0
-
-  _ok=0
   _kzlp_kmod_present "xt_multiport" && _kzlp_kmod_present "nfnetlink_queue" && _ok=1
   _add "kmod_netfilter" "Netfilter çekirdek modülleri" "$_ok" 1
 
@@ -66,19 +58,10 @@ requirements_json() {
   _add "kmod_tc" "Trafik Kontrol çekirdek modülleri" "$_ok" 1
 
   _ok=0
-  _kzlp_any_kmod "usbip-core.ko" && _ok=1
-  _kzlp_any_kmod "usbip-host.ko" && _ok=1
-  _add "kmod_usb_ip" "IP üzerinden USB çekirdek modülleri" "$_ok" 0
-
-  _ok=0
   opkg list-installed 2>/dev/null | grep -qE '^xtables-addons' && _ok=1
   _kzlp_any_kmod "xt_condition.ko" && _ok=1
   _kzlp_kmod_present "xt_ipp2p" && _ok=1
   _add "xtables_addons" "Xtables-addons (Netfilter genişletme)" "$_ok" 1
-
-  _ok=0
-  find /lib/modules -maxdepth 2 -name 'dvb-usb*.ko' 2>/dev/null | grep -q . && _ok=1
-  _add "kmod_usb_dvb" "USB DVB tuner çekirdek modülleri" "$_ok" 0
 
   _ok=0
   command -v iptables >/dev/null 2>&1 && iptables --version >/dev/null 2>&1 && _ok=1
@@ -113,39 +96,15 @@ requirements_mandatory_ok() {
   return 0
 }
 
-conflicts_json() {
-  echo -n '['
-  _first=1
-  _conf() {
-    _id="$1"
-    _label="$2"
-    _active=0
-    eval "_active=\$3"
-    [ "$_first" -eq 0 ] && echo -n ','
-    _first=0
-    _act=false
-    [ "$_active" -eq 1 ] && _act=true
-    _le=$(json_escape "$_label")
-    printf '{"id":"%s","label":"%s","active":%s}' "$_id" "$_le" "$_act"
-  }
-
-  _a=0
-  [ -d /opt/www/kzm2 ] && _a=1
-  _conf "kzm2" "KZM2 / keenetic-zapret2-manager paneli" "$_a"
-
-  _a=0
-  [ -d /opt/www/nfqws-keenetic-web ] || [ -d /opt/www/nfqws-web ] && _a=1
-  _conf "nfqws_web" "nfqws-keenetic-web arayüzü" "$_a"
-
-  _a=0
-  pgrep -f '/opt/zapret2/nfq2/nfqws2' >/dev/null 2>&1 && _a=1
-  pgrep -x nfqws2 >/dev/null 2>&1 && _a=1
-  _conf "nfqws2_daemon" "nfqws2 süreci (çalışıyor)" "$_a"
-
-  _a=0
-  [ -x /opt/etc/init.d/S90-zapret2 ] 2>/dev/null && _a=1
-  [ -x /opt/etc/init.d/S51nfqws2 ] 2>/dev/null && _a=1
-  _conf "zapret2_init" "Zapret2 / nfqws2 otomatik başlatma" "$_a"
-
-  echo -n ']'
+# Eski panelleri routerdan kaldir (KZM2, nfqws-web, zapret2 servisleri)
+kzlp_remove_legacy_panels() {
+  /opt/etc/init.d/S90-zapret2 stop 2>/dev/null
+  /opt/etc/init.d/S51nfqws2 stop 2>/dev/null
+  killall nfqws2 2>/dev/null
+  chmod -x /opt/etc/init.d/S90-zapret2 2>/dev/null
+  chmod -x /opt/etc/init.d/S51nfqws2 2>/dev/null
+  rm -rf /opt/www/kzm2 /opt/www/nfqws-keenetic-web /opt/www/nfqws-web 2>/dev/null
+  rm -f /opt/etc/init.d/S90-zapret2 /opt/etc/init.d/S51nfqws2 2>/dev/null
+  rm -f /opt/etc/init.d/S51nfqws2.bak.* 2>/dev/null
+  return 0
 }

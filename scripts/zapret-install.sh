@@ -152,10 +152,11 @@ chown nobody "$AUTO_HOSTS" "$AUTO_DEBUG" 2>/dev/null || true
 echo "$tag" > "$VERSION_FILE"
 echo "$ISP_ID" > "$KZLP_DIR/installed.isp"
 
-# zapret2 kapat
-/opt/etc/init.d/S90-zapret2 stop 2>/dev/null || true
-chmod -x /opt/etc/init.d/S90-zapret2 2>/dev/null || true
-killall nfqws2 2>/dev/null || true
+# Eski panelleri kaldir
+if [ -f /opt/etc/kzlp/requirements.sh ]; then
+  . /opt/etc/kzlp/requirements.sh
+  kzlp_remove_legacy_panels
+fi
 
 # ndm hook
 mkdir -p /opt/etc/ndm/netfilter.d

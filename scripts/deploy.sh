@@ -4,11 +4,16 @@ set -e
 
 echo "=== KZLP Deploy ==="
 
-# Stop zapret2 / KZM2 traffic
-echo "[1] zapret2 durduruluyor..."
-/opt/etc/init.d/S90-zapret2 stop 2>/dev/null || true
-chmod -x /opt/etc/init.d/S90-zapret2 2>/dev/null || true
-killall nfqws2 2>/dev/null || true
+# Eski panelleri kaldir
+echo "[1] Eski Zapret panelleri kaldiriliyor..."
+if [ -f /opt/etc/kzlp/requirements.sh ]; then
+  . /opt/etc/kzlp/requirements.sh
+  kzlp_remove_legacy_panels
+else
+  /opt/etc/init.d/S90-zapret2 stop 2>/dev/null || true
+  killall nfqws2 2>/dev/null || true
+  rm -rf /opt/www/kzm2 2>/dev/null
+fi
 
 # Restore classic zapret
 echo "[2] Classic zapret geri yukleniyor..."
