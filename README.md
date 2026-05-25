@@ -4,7 +4,7 @@ Keenetic router + [Entware](https://github.com/Entware/Entware) + [bol-van/zapre
 
 Panel, Zapret’i başlat/durdur, Keenetic **Zapret bağlantı politikasına** bağlı cihazları listele, domain listelerini düzenle, yedek al ve GitHub’dan nfqws güncellemesini kontrol etmenizi sağlar.
 
-> **Not:** Zapret2 / nfqws2 / KZM2 ile aynı anda kullanmayın (NFQUEUE çakışması). Bu proje **klasik zapret v72.x** ve kuyruk **200** için tasarlanmıştır.
+> **Not:** Başka Zapret web panelleri (KZM2, nfqws-web vb.) ile aynı anda kullanmayın (NFQUEUE çakışması). Bu proje **klasik zapret v72.x** ve kuyruk **200** için tasarlanmıştır.
 
 ## Ne işe yarar?
 
@@ -122,7 +122,7 @@ Tüm ağa bypass vermek için `FILTER_MARK` satırını config’ten kaldırıp 
 | Panel 403 / boş | `lighttpd -f /opt/etc/lighttpd/lighttpd.conf` çalışıyor mu? Port **8088** |
 | Discord/Roblox açılmıyor | Cihaz **Zapret** politikasında mı? `pgrep -a nfqws` |
 | Ad sütunu boş | `/tmp/ndnproxyhostmap.conf` router’da var mı (Keenetic cihaz kaydı) |
-| Çift NFQUEUE | `nfqws2` / zapret2 kapalı mı? `killall nfqws2` |
+| Çift NFQUEUE | Başka Zapret paneli / nfqws2 süreci kapalı mı? |
 
 API testi (router içinden):
 

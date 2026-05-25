@@ -123,6 +123,16 @@ valid_isp_id() {
   return 1
 }
 
+# Gereksinim kontrolleri
+REQ_SH="$KZLP_DIR/requirements.sh"
+if [ -f "$REQ_SH" ]; then
+  . "$REQ_SH"
+else
+  requirements_json() { echo -n '[]'; }
+  conflicts_json() { echo -n '[]'; }
+  requirements_mandatory_ok() { return 0; }
+fi
+
 installed_version() {
   v=$(cat "$VERSION_FILE" 2>/dev/null | tr -d '\n\r')
   [ -n "$v" ] && echo "$v" || echo "bilinmiyor"
@@ -280,9 +290,16 @@ case "$ACTION" in
     _st="idle"
     [ -f /opt/tmp/kzlp_install.status ] && _st=$(cat /opt/tmp/kzlp_install.status 2>/dev/null | tr -d '\r\n')
     _st=$(json_escape "$_st")
-    json_ok "{\"zapret_installed\":$zinst,\"model\":\"$model\",\"arch\":\"$arch\",\"detected_isp\":\"$isp\",\"installed_isp\":\"$inst_isp\",\"wan\":\"$wan\",\"isps\":$(isp_list_json),\"install_status\":\"$_st\"}"
+    _req_ok=false
+    requirements_mandatory_ok 2>/dev/null && _req_ok=true
+    _req=$(requirements_json 2>/dev/null)
+    [ -z "$_req" ] && _req='[]'
+    _conf=$(conflicts_json 2>/dev/null)
+    [ -z "$_conf" ] && _conf='[]'
+    json_ok "{\"zapret_installed\":$zinst,\"model\":\"$model\",\"arch\":\"$arch\",\"detected_isp\":\"$isp\",\"installed_isp\":\"$inst_isp\",\"wan\":\"$wan\",\"isps\":$(isp_list_json),\"install_status\":\"$_st\",\"requirements_ok\":$_req_ok,\"requirements\":$_req,\"conflicts\":$_conf}"
     ;;
   install_start)
+    requirements_mandatory_ok 2>/dev/null || json_err "Zorunlu bilesenler eksik (Gereksinimler listesine bakin)"
     isp=$(urldecode "$(post_param isp)")
     [ -z "$isp" ] && isp=$(detect_isp_id)
     valid_isp_id "$isp" || json_err "Gecersiz ISS"
