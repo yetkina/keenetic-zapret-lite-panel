@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>KZLP — Keenetic Zapret Lite Panel</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a2332;
+      --border: #2a3a52;
+      --text: #e7eef7;
+      --muted: #8ba3c7;
+      --accent: #3b82f6;
+      --ok: #22c55e;
+      --warn: #eab308;
+      --bad: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 1.25rem; }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    h1 { font-size: 1.35rem; margin: 0; font-weight: 600; }
+    .sub { color: var(--muted); font-size: 0.85rem; margin-top: 0.2rem; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: var(--card);
+      border: 1px solid var(--border);
+    }
+    .badge.on { border-color: var(--ok); color: var(--ok); }
+    .badge.off { border-color: var(--bad); color: var(--bad); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1rem 1.25rem;
+      margin-bottom: 1rem;
+    }
+    section h2 {
+      margin: 0 0 0.85rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .btns { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    button, .btn {
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: #243044;
+      color: var(--text);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    button:hover { background: #2d3d56; }
+    button.primary { background: var(--accent); border-color: var(--accent); }
+    button.primary:hover { filter: brightness(1.1); }
+    button.danger { border-color: var(--bad); color: #fecaca; }
+    button.site-tab.primary { background: var(--accent); border-color: var(--accent); }
+    button.site-tab:not(.primary) { opacity: 0.85; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { text-align: left; padding: 0.5rem 0.4rem; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 500; font-size: 0.8rem; }
+    .empty { color: var(--muted); font-size: 0.9rem; padding: 0.5rem 0; }
+    .row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
+    input[type="text"] {
+      flex: 1;
+      min-width: 200px;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+    ul.domains { list-style: none; padding: 0; margin: 0; }
+    ul.domains li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    ul.domains li button {
+      padding: 0.25rem 0.5rem;
+      font-size: 0.75rem;
+    }
+    .msg {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      display: none;
+    }
+    .msg.show { display: block; }
+    .msg.ok { background: rgba(34,197,94,0.15); border: 1px solid var(--ok); }
+    .msg.err { background: rgba(239,68,68,0.15); border: 1px solid var(--bad); }
+    .info { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; }
+    select {
+      padding: 0.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      min-width: 220px;
+    }
+    #toast {
+      position: fixed;
+      bottom: 1rem;
+      right: 1rem;
+      max-width: 320px;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      display: none;
+      z-index: 100;
+    }
+    #toast.show { display: block; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Keenetic Zapret Lite Panel</h1>
+        <p class="sub">Keenetic <strong>Zapret</strong> politikası · yalnızca politikalı cihazlar</p>
+      </div>
+      <div id="statusBadge" class="badge off"><span class="dot"></span><span id="statusText">Yükleniyor…</span></div>
+    </header>
+
+    <section>
+      <h2>Durum</h2>
+      <p class="info" id="versionLine">—</p>
+      <p class="info" id="policyLine">—</p>
+      <div class="btns">
+        <button type="button" data-cmd="start">Başlat</button>
+        <button type="button" data-cmd="stop" class="danger">Durdur</button>
+        <button type="button" data-cmd="restart" class="primary">Yeniden başlat</button>
+      </div>
+      <div id="ctrlMsg" class="msg"></div>
+    </section>
+
+    <section>
+      <h2>Zapret politikası — cihazlar</h2>
+      <p class="info">Keenetic’te <strong>Zapret</strong> bağlantı kuralına atanmış cihazlar. Bypass <strong>yalnızca</strong> bu cihazlara uygulanır. Yeni cihaz eklemek için Keenetic web arayüzü → Bağlantı kuralı → Zapret.</p>
+      <table>
+        <thead><tr><th>MAC</th><th>IP</th><th>Ad</th></tr></thead>
+        <tbody id="policyUsers"></tbody>
+      </table>
+      <p class="empty" id="policyEmpty" style="display:none">Politikaya atanmış cihaz bulunamadı.</p>
+    </section>
+
+    <section>
+      <h2>Güncelleme</h2>
+      <p class="info" id="updateLine">—</p>
+      <div class="btns">
+        <button type="button" id="btnCheck">Sürüm kontrol</button>
+        <button type="button" id="btnUpdate" class="primary" disabled>Güncelle</button>
+      </div>
+      <div id="updMsg" class="msg"></div>
+    </section>
+
+    <section>
+      <h2>Siteler / domainler</h2>
+      <p class="info" id="sitesInfo">—</p>
+      <div class="btns" style="margin-bottom:0.75rem">
+        <button type="button" class="site-tab primary" data-tab="learned">Öğrenilen</button>
+        <button type="button" class="site-tab" data-tab="exclude">İstisna</button>
+        <button type="button" class="site-tab" data-tab="user">Hedef</button>
+      </div>
+      <p class="info" id="tabHelp">DPI tarafından engellenen siteler otomatik listelenir.</p>
+      <div class="row">
+        <input type="text" id="siteDomainInput" placeholder="domain ekle (ornek: turkiye.gov.tr)">
+        <button type="button" id="btnAddSite" class="primary">Ekle</button>
+        <button type="button" id="btnRefreshSites">Yenile</button>
+        <button type="button" id="btnClearLearned" class="danger" style="display:none">Öğrenileni temizle</button>
+      </div>
+      <ul class="domains" id="siteList"></ul>
+      <p class="empty" id="siteEmpty">Liste boş.</p>
+      <pre id="siteLog" style="display:none;margin-top:0.75rem;padding:0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:0.75rem;max-height:160px;overflow:auto;color:var(--muted)"></pre>
+    </section>
+
+    <section>
+      <h2>Yedekle / Geri yükle</h2>
+      <div class="btns">
+        <button type="button" id="btnBackup">Yedek oluştur</button>
+      </div>
+      <div class="row" style="margin-top:0.75rem">
+        <select id="backupSelect"><option value="">— Yedek seç —</option></select>
+        <button type="button" id="btnRestore">Geri yükle</button>
+      </div>
+      <div id="bakMsg" class="msg"></div>
+    </section>
+  </div>
+  <div id="toast"></div>
+
+  <script>
+    const api = (action, body) => {
+      const opts = { method: body ? 'POST' : 'GET' };
+      if (body) {
+        opts.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+        opts.body = new URLSearchParams({ action, ...body });
+      } else {
+        opts.method = 'GET';
+      }
+      const url = body ? 'api.cgi' : `api.cgi?action=${encodeURIComponent(action)}`;
+      return fetch(url, opts).then(r => r.json());
+    };
+
+    const toast = (t, err) => {
+      const el = document.getElementById('toast');
+      el.textContent = t;
+      el.style.borderColor = err ? 'var(--bad)' : 'var(--ok)';
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 3500);
+    };
+
+    const showMsg = (id, text, ok) => {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.className = 'msg show ' + (ok ? 'ok' : 'err');
+    };
+
+    let latestTag = null;
+
+    async function refreshStatus() {
+      const j = await api('status');
+      if (!j.ok) throw new Error(j.error);
+      const d = j.data;
+      const badge = document.getElementById('statusBadge');
+      const st = document.getElementById('statusText');
+      if (d.running) {
+        badge.className = 'badge on';
+        st.textContent = 'Çalışıyor';
+      } else {
+        badge.className = 'badge off';
+        st.textContent = 'Durdu';
+      }
+      document.getElementById('versionLine').textContent =
+        `Kurulu sürüm: ${d.installed_version} · WAN: ${d.wan || '—'}`;
+      const mode = d.policy_mode ? 'Politika modu (aktif)' : 'Tüm ağ modu';
+      document.getElementById('policyLine').textContent =
+        `${mode} · işaret ${d.policy_mark} · ${d.policy_users.length} cihaz · ${d.exceptions_count} istisna`;
+
+      const tbody = document.getElementById('policyUsers');
+      tbody.innerHTML = '';
+      if (!d.policy_users.length) {
+        document.getElementById('policyEmpty').style.display = 'block';
+      } else {
+        document.getElementById('policyEmpty').style.display = 'none';
+        d.policy_users.forEach(u => {
+          const tr = document.createElement('tr');
+          const ad = u.name || (u.hostname && u.hostname !== u.ip ? u.hostname : '');
+          tr.innerHTML = `<td>${u.mac}</td><td>${u.ip || '—'}</td><td>${ad || '—'}</td>`;
+          tbody.appendChild(tr);
+        });
+      }
+    }
+
+    let sitesData = { exclude: [], user: [], learned: [] };
+    let activeSiteTab = 'learned';
+
+    const tabHelp = {
+      learned: 'Politikalı cihazlarda DPI engeli tespit edilen siteler (otomatik öğrenilir).',
+      exclude: 'Bu sitelere Zapret uygulanmaz (e-devlet, banka vb.).',
+      user: 'Manuel hedef domain listesi (not / referans).'
+    };
+
+    function renderSiteList() {
+      const ul = document.getElementById('siteList');
+      const logEl = document.getElementById('siteLog');
+      const clearBtn = document.getElementById('btnClearLearned');
+      ul.innerHTML = '';
+      logEl.style.display = 'none';
+      clearBtn.style.display = activeSiteTab === 'learned' ? 'inline-block' : 'none';
+      document.getElementById('tabHelp').textContent = tabHelp[activeSiteTab];
+      document.getElementById('btnAddSite').style.display = activeSiteTab === 'learned' ? 'none' : 'inline-block';
+
+      const domains = sitesData[activeSiteTab] || [];
+      document.getElementById('siteEmpty').style.display = domains.length ? 'none' : 'block';
+      domains.forEach(dom => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${dom}</span>`;
+        if (activeSiteTab !== 'learned') {
+          const b = document.createElement('button');
+          b.textContent = 'Sil';
+          b.className = 'danger';
+          b.onclick = async () => {
+            const r = await api('domain_remove', { domain: dom, list: activeSiteTab });
+            if (r.ok) { toast('Silindi'); sitesData = r.data; renderSiteList(); refreshStatus(); }
+            else toast(r.error, true);
+          };
+          li.appendChild(b);
+        }
+        ul.appendChild(li);
+      });
+      if (activeSiteTab === 'learned' && sitesData.log_tail) {
+        logEl.style.display = 'block';
+        logEl.textContent = sitesData.log_tail;
+      }
+    }
+
+    async function loadSites() {
+      const j = await api('sites_list');
+      if (!j.ok) return;
+      sitesData = j.data;
+      document.getElementById('sitesInfo').textContent =
+        `Öğrenilen: ${j.data.learned.length} · İstisna: ${j.data.exclude.length} · Hedef: ${j.data.user.length}` +
+        (j.data.learning_enabled ? ' · Otomatik izleme açık' : '');
+      renderSiteList();
+    }
+
+    document.querySelectorAll('.site-tab').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.site-tab').forEach(b => b.classList.remove('primary'));
+        btn.classList.add('primary');
+        activeSiteTab = btn.dataset.tab;
+        renderSiteList();
+      });
+    });
+
+    document.getElementById('btnRefreshSites').onclick = () => loadSites();
+    document.getElementById('btnClearLearned').onclick = async () => {
+      if (!confirm('Öğrenilen site listesi temizlensin mi?')) return;
+      const j = await api('learned_clear');
+      if (j.ok) { toast('Temizlendi'); loadSites(); }
+    };
+    document.getElementById('btnAddSite').onclick = async () => {
+      const domain = document.getElementById('siteDomainInput').value.trim();
+      if (!domain || activeSiteTab === 'learned') return;
+      const j = await api('domain_add', { domain, list: activeSiteTab });
+      if (j.ok) {
+        document.getElementById('siteDomainInput').value = '';
+        sitesData = j.data;
+        toast('Eklendi');
+        renderSiteList();
+        refreshStatus();
+      } else toast(j.error, true);
+    };
+
+    async function loadBackups() {
+      const j = await api('backup_list');
+      const sel = document.getElementById('backupSelect');
+      sel.innerHTML = '<option value="">— Yedek seç —</option>';
+      if (!j.ok) return;
+      j.data.backups.forEach(b => {
+        const o = document.createElement('option');
+        o.value = b.name;
+        o.textContent = `${b.name} (${Math.round(b.size/1024)} KB)`;
+        sel.appendChild(o);
+      });
+    }
+
+    document.querySelectorAll('[data-cmd]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const cmd = btn.dataset.cmd;
+        btn.disabled = true;
+        const j = await api('control', { cmd });
+        btn.disabled = false;
+        if (j.ok) {
+          showMsg('ctrlMsg', j.data.output || 'Tamam', true);
+          refreshStatus();
+        } else showMsg('ctrlMsg', j.error, false);
+      });
+    });
+
+    document.getElementById('btnCheck').onclick = async () => {
+      const j = await api('version_check');
+      if (!j.ok) { showMsg('updMsg', j.error, false); return; }
+      const d = j.data;
+      latestTag = d.latest;
+      document.getElementById('updateLine').textContent =
+        `Kurulu: ${d.installed} · GitHub: ${d.latest}` +
+        (d.update_available ? ' · Güncelleme var' : ' · Güncel');
+      document.getElementById('btnUpdate').disabled = !d.update_available;
+      showMsg('updMsg', d.update_available ? 'Yeni sürüm mevcut.' : 'Zaten güncel.', true);
+    };
+
+    document.getElementById('btnUpdate').onclick = async () => {
+      if (!confirm(`Zapret ${latestTag || ''} kurulsun mu? Kısa süre kesinti olabilir.`)) return;
+      const btn = document.getElementById('btnUpdate');
+      btn.disabled = true;
+      showMsg('updMsg', 'İndiriliyor…', true);
+      const j = await api('update');
+      btn.disabled = false;
+      if (j.ok) {
+        showMsg('updMsg', `Güncellendi: ${j.data.installed}`, true);
+        toast('Güncelleme tamam');
+        refreshStatus();
+        document.getElementById('btnUpdate').disabled = true;
+      } else showMsg('updMsg', j.error, false);
+    };
+
+
+    document.getElementById('btnBackup').onclick = async () => {
+      const j = await api('backup_create');
+      if (j.ok) {
+        showMsg('bakMsg', `Yedek: ${j.data.backup.name}`, true);
+        loadBackups();
+        toast('Yedek oluşturuldu');
+      } else showMsg('bakMsg', j.error, false);
+    };
+
+    document.getElementById('btnRestore').onclick = async () => {
+      const name = document.getElementById('backupSelect').value;
+      if (!name || !confirm(`${name} geri yüklensin mi?`)) return;
+      const j = await api('backup_restore', { name });
+      if (j.ok) {
+        showMsg('bakMsg', 'Geri yükleme tamam', true);
+        toast('Geri yüklendi');
+        refreshStatus();
+        loadSites();
+      } else showMsg('bakMsg', j.error, false);
+    };
+
+    (async () => {
+      try {
+        await refreshStatus();
+        await loadSites();
+        await loadBackups();
+      } catch (e) {
+        toast('API hatası: ' + e.message, true);
+      }
+      setInterval(refreshStatus, 30000);
+    })();
+  </script>
+</body>
+</html>

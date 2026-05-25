@@ -1,0 +1,10 @@
+{
+  "github_repo": "bol-van/zapret",
+  "zapret_path": "/opt/zapret",
+  "backup_dir": "/opt/etc/kzlp/backups",
+  "policy_mark": "0xffffaaa",
+  "policy_mode": true,
+  "policy_chain": "_NDM_HOTSPOT_PREROUTING_MANGL",
+  "init_script": "/opt/etc/init.d/S90-zapret",
+  "exclude_file": "/opt/zapret/ipset/zapret-hosts-user-exclude.txt"
+}
