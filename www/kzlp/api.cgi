@@ -69,17 +69,49 @@ detect_wan_iface() {
   echo "$wan"
 }
 
+# ndmc ciktisindan yalnizca ANSI kodlarini kaldir (tr -d K kullanmayin — Keenetic bozulur)
+ndmc_clean() {
+  sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g;s/\r//g'
+}
+
+ndmc_version_out() {
+  [ -x /bin/ndmc ] || return 0
+  LD_LIBRARY_PATH= ndmc -c 'show version' 2>/dev/null | ndmc_clean
+}
+
+ndmc_system_out() {
+  [ -x /bin/ndmc ] || return 0
+  LD_LIBRARY_PATH= ndmc -c 'show system' 2>/dev/null | ndmc_clean
+}
+
 detect_keenetic_model() {
   m=""
-  if [ -x /bin/ndmc ]; then
-    m=$(LD_LIBRARY_PATH= ndmc -c 'show version' 2>/dev/null | tr -d '\r\033' | tr -d '[]K' \
-      | awk -F': ' '/^[[:space:]]*description:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
-    [ -z "$m" ] && m=$(LD_LIBRARY_PATH= ndmc -c 'show version' 2>/dev/null | tr -d '\r\033' | tr -d '[]K' \
-      | awk -F': ' '/^[[:space:]]*model:/{gsub(/^[[:space:]]+/,"",$2); print "Keenetic "$2; exit}')
+  _out=$(ndmc_version_out)
+  if [ -n "$_out" ]; then
+    _model=$(echo "$_out" | awk -F': ' '/^[[:space:]]*model:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
+    _hw=$(echo "$_out" | awk -F': ' '/^[[:space:]]*hw_id:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
+    _dev=$(echo "$_out" | awk -F': ' '/^[[:space:]]*device:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
+    if [ -n "$_model" ]; then
+      m="Keenetic $_model"
+    elif [ -n "$_dev" ] && [ -n "$_hw" ]; then
+      m="Keenetic $_dev ($_hw)"
+    else
+      _desc=$(echo "$_out" | awk -F': ' '/^[[:space:]]*description:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
+      if [ -n "$_desc" ]; then
+        m=$(echo "$_desc" | sed 's/^eenetic/Keenetic/')
+        case "$m" in Keenetic*) ;; *) m="Keenetic $m" ;; esac
+      fi
+    fi
   fi
   [ -z "$m" ] && m=$(cat /proc/device-tree/model 2>/dev/null | tr -d '\0')
+  case "$m" in
+    *KN-1012*|*"N-1012"*) m="Keenetic Hero (N-1012)" ;;
+    *KN-1810*) m="Keenetic Giant (KN-1810)" ;;
+    *KN-2610*) m="Keenetic Peak (KN-2610)" ;;
+    *KN-3410*) m="Keenetic Hopper (KN-3410)" ;;
+    *KN-3510*) m="Keenetic Hopper SE (KN-3510)" ;;
+  esac
   [ -z "$m" ] && m="Keenetic"
-  m=$(echo "$m" | sed 's/^eenetic/Keenetic/')
   echo "$m"
 }
 
@@ -141,16 +173,14 @@ isp_id_to_name() {
 detect_firmware() {
   fw=""
   if [ -x /bin/ndmc ]; then
-    fw=$(LD_LIBRARY_PATH= ndmc -c 'show version' 2>/dev/null | tr -d '\r\033[]K' \
-      | awk -F': ' '/^[[:space:]]*title:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
+    fw=$(ndmc_version_out | awk -F': ' '/^[[:space:]]*title:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
   fi
   [ -z "$fw" ] && fw="—"
   echo "$fw"
 }
 
 detect_hostname() {
-  h=$(LD_LIBRARY_PATH= ndmc -c 'show system' 2>/dev/null | tr -d '\r\033[]K' \
-    | awk -F': ' '/^[[:space:]]*hostname:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
+  h=$(ndmc_system_out | awk -F': ' '/^[[:space:]]*hostname:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
   [ -z "$h" ] && h=$(hostname 2>/dev/null)
   echo "$h"
 }
@@ -164,7 +194,7 @@ system_stats() {
   read -r _load1 _load5 _load15 _ _ < /proc/loadavg 2>/dev/null
   _mem_used=0; _mem_total=0
   if [ -x /bin/ndmc ]; then
-    _memline=$(LD_LIBRARY_PATH= ndmc -c 'show system' 2>/dev/null | tr -d '\r\033[]K' \
+    _memline=$(ndmc_system_out \
       | awk -F': ' '/^[[:space:]]*memory:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
     _mem_used=$(echo "$_memline" | cut -d/ -f1)
     _mem_total=$(echo "$_memline" | cut -d/ -f2)

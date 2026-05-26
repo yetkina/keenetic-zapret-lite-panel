@@ -2,6 +2,15 @@
 
 Tüm önemli değişiklikler [Semantic Versioning](https://semver.org/) ile sürümlenir.
 
+## [1.1.2] - 2026-05-26
+
+### Düzeltildi
+- Router modeli: `ndmc` çıktısında `tr -d K` Keenetic adını bozuyordu; Hero (N-1012) vb. artık doğru tespit edilir
+- `/proc/device-tree/model` yalnızca `KN-1012` döndüğünde Hero adına eşlenir
+
+### Değiştirildi
+- **Panel (Canlı):** KZLP sürümü üst çubukta, menüde ve sistem özetinde gösterilir
+
 ## [1.1.1] - 2026-05-26
 
 ### Düzeltildi

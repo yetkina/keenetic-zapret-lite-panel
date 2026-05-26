@@ -57,6 +57,14 @@
       border-left-color: var(--accent);
       background: rgba(59,130,246,0.12);
     }
+    .nav-ver {
+      display: block;
+      font-size: 0.65rem;
+      font-weight: 500;
+      color: var(--muted);
+      margin-top: 0.15rem;
+    }
+    .nav-item.active .nav-ver { color: var(--accent); opacity: 0.85; }
     .nav-item.warn { color: var(--warn); }
     .main { flex: 1; min-width: 0; }
     .wrap { max-width: 920px; margin: 0 auto; padding: 1.25rem; }
@@ -340,7 +348,7 @@
   <div class="app">
     <aside class="sidebar">
       <div class="brand"><strong>KZLP</strong> Keenetic Zapret</div>
-      <button type="button" class="nav-item active" data-page="live">Panel (Canlı)</button>
+      <button type="button" class="nav-item active" data-page="live">Panel (Canlı) <span class="nav-ver" id="navLiveVer"></span></button>
       <button type="button" class="nav-item" data-page="dashboard">Zapret</button>
       <button type="button" class="nav-item" data-page="install" id="navInstall">Zapret Kurulum</button>
     </aside>
@@ -352,6 +360,7 @@
         <p class="sub" id="liveSubtitle">Canlı özet · otomatik yenileme 15 sn</p>
       </div>
       <div class="live-meta">
+        <span class="pill" id="liveKzlpVer">KZLP —</span>
         <span class="pill" id="liveClock">—</span>
         <button type="button" id="btnLiveRefresh">Yenile</button>
       </div>
@@ -550,7 +559,10 @@
     function renderLive(d) {
       document.getElementById('liveTitle').textContent = d.model || 'Keenetic';
       document.getElementById('liveSubtitle').textContent =
-        `${d.hostname || '—'} · ${d.isp || '—'} · WAN ${d.wan || '—'}`;
+        `${d.hostname || '—'} · ${d.isp || '—'} · WAN ${d.wan || '—'} · Firmware ${d.firmware || '—'}`;
+      document.getElementById('liveKzlpVer').textContent = `KZLP v${d.kzlp_version || '—'}`;
+      const nv = document.getElementById('navLiveVer');
+      if (nv) nv.textContent = d.kzlp_version ? `v${d.kzlp_version}` : '';
       const zapCls = d.zapret_running ? 'on' : 'off';
       const zapTxt = d.zapret_running ? 'Çalışıyor' : (d.zapret_installed ? 'Durdu' : 'Kurulu değil');
       const tiles = [
@@ -594,6 +606,8 @@
       const facts = document.getElementById('liveFacts');
       const rows = [
         ['Model', d.model],
+        ['KZLP sürüm', d.kzlp_version ? `v${d.kzlp_version}` : '—'],
+        ['Zapret sürüm', d.zapret_version || '—'],
         ['Firmware', d.firmware],
         ['WAN', d.wan],
         ['LAN IP', d.lan_ip],
