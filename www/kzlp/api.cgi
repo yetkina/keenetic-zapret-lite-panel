@@ -222,7 +222,7 @@ version_gt() {
   _b=$(norm_ver "$2")
   [ -z "$_a" ] || [ -z "$_b" ] && return 1
   _hi=$(printf '%s\n%s' "$_a" "$_b" | sort -V | tail -1)
-  [ "$_hi" = "$_b" ] && [ "$_a" != "$_b" ]
+  [ "$_hi" = "$_a" ] && [ "$_a" != "$_b" ]
 }
 
 zapret_version() {

@@ -2,6 +2,11 @@
 
 Tüm önemli değişiklikler [Semantic Versioning](https://semver.org/) ile sürümlenir.
 
+## [1.1.1] - 2026-05-26
+
+### Düzeltildi
+- GitHub sürüm karşılaştırmasında güncelleme mevcut bayrağı (`update_available`) yanlış `false` dönüyordu
+
 ## [1.1.0] - 2026-05-26
 
 ### Eklendi
