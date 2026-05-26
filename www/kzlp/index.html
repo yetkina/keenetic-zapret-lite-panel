@@ -323,6 +323,17 @@
     .facts dd { margin: 0.15rem 0 0.65rem; font-weight: 500; }
     .live-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.65rem; }
     .live-actions button { padding: 0.35rem 0.7rem; font-size: 0.8rem; }
+    .changelog-box {
+      margin: 0.75rem 0;
+      padding: 0.85rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.82rem;
+    }
+    .changelog-box h4 { margin: 0.5rem 0 0.25rem; font-size: 0.75rem; color: var(--muted); text-transform: uppercase; }
+    .changelog-box ul { margin: 0.2rem 0 0.5rem 1rem; padding: 0; }
+    .changelog-box li { margin: 0.2rem 0; color: var(--text); }
   </style>
 </head>
 <body>
@@ -384,7 +395,19 @@
     </section>
 
     <section>
-      <h2>Güncelleme</h2>
+      <h2>KZLP Panel sürümü</h2>
+      <p class="info" id="kzlpVersionLine">—</p>
+      <div id="kzlpChangelog" class="changelog-box"></div>
+      <div class="btns">
+        <button type="button" id="btnKzlpCheck">Güncelleme kontrol</button>
+        <button type="button" id="btnKzlpUpdate" class="primary" disabled>Paneli güncelle</button>
+      </div>
+      <div id="kzlpUpdMsg" class="msg"></div>
+      <pre id="kzlpUpdLog" class="install-log" style="display:none"></pre>
+    </section>
+
+    <section>
+      <h2>Zapret (nfqws) güncelleme</h2>
       <p class="info" id="updateLine">—</p>
       <div class="btns">
         <button type="button" id="btnCheck">Sürüm kontrol</button>
@@ -488,8 +511,10 @@
     };
 
     let latestTag = null;
+    let latestKzlp = null;
     let installInfo = null;
     let installPoll = null;
+    let kzlpUpdatePoll = null;
     let livePoll = null;
 
     const fmtKb = n => {
@@ -559,7 +584,7 @@
       tempTile.className = 'tile';
       tempTile.innerHTML = `<h3>Sıcaklık / servisler</h3>
         <div class="big">${d.cpu_temp_c != null ? d.cpu_temp_c + ' °C' : '—'}</div>
-        <div class="subt">Çalışma süresi: ${fmtUptime(d.uptime_sec)}</div>
+        <div class="subt">KZLP ${d.kzlp_version || '—'} · ${fmtUptime(d.uptime_sec)}</div>
         <div class="svc-row">
           <span class="svc ${d.zapret_running ? 'on' : 'off'}">Zapret</span>
           <span class="svc ${d.lighttpd ? 'on' : 'off'}">KZLP</span>
@@ -742,7 +767,7 @@
         st.textContent = 'Durdu';
       }
       document.getElementById('versionLine').textContent =
-        `Kurulu sürüm: ${d.installed_version} · WAN: ${d.wan || '—'}`;
+        `Zapret: ${d.zapret_version || '—'} · KZLP: ${d.kzlp_version || '—'} · WAN: ${d.wan || '—'}`;
       const mode = d.policy_mode ? 'Politika modu (aktif)' : 'Tüm ağ modu';
       document.getElementById('policyLine').textContent =
         `${mode} · işaret ${d.policy_mark} · ${d.policy_users.length} cihaz · ${d.exceptions_count} istisna`;
@@ -869,6 +894,80 @@
       });
     });
 
+    function renderChangelog(cl) {
+      const box = document.getElementById('kzlpChangelog');
+      if (!cl || (!cl.added?.length && !cl.fixed?.length && !cl.changed?.length)) {
+        box.innerHTML = '<p class="info" style="margin:0">Bu sürüm için değişiklik notu yok.</p>';
+        return;
+      }
+      let html = '';
+      const block = (title, arr) => {
+        if (!arr?.length) return '';
+        return `<h4>${title}</h4><ul>${arr.map(i => `<li>${i}</li>`).join('')}</ul>`;
+      };
+      html += block('Eklendi', cl.added);
+      html += block('Düzeltildi', cl.fixed);
+      html += block('Değiştirildi', cl.changed);
+      box.innerHTML = html;
+    }
+
+    async function checkKzlpVersion(silent) {
+      const j = await api('kzlp_version_check');
+      if (!j.ok) {
+        if (!silent) showMsg('kzlpUpdMsg', j.error, false);
+        return;
+      }
+      const d = j.data;
+      latestKzlp = d.latest;
+      document.getElementById('kzlpVersionLine').textContent =
+        `Kurulu: v${d.installed} · GitHub: v${d.latest}` +
+        (d.update_available ? ' · Güncelleme mevcut' : ' · Güncel');
+      document.getElementById('btnKzlpUpdate').disabled = !d.update_available;
+      renderChangelog(d.update_available && d.changelog_latest?.version ? d.changelog_latest : d.changelog);
+      if (d.update_available) {
+        document.getElementById('btnKzlpUpdate').textContent = `Paneli güncelle (v${d.latest})`;
+      } else {
+        document.getElementById('btnKzlpUpdate').textContent = 'Paneli güncelle';
+      }
+      if (!silent && d.update_available) showMsg('kzlpUpdMsg', 'Yeni panel sürümü var.', true);
+      else if (!silent) showMsg('kzlpUpdMsg', 'Panel güncel.', true);
+    }
+
+    async function pollKzlpUpdate() {
+      const j = await api('kzlp_update_status');
+      if (!j.ok) return;
+      const logEl = document.getElementById('kzlpUpdLog');
+      logEl.style.display = 'block';
+      logEl.textContent = j.data.log_tail || '';
+      if (j.data.status === 'running') return;
+      if (kzlpUpdatePoll) { clearInterval(kzlpUpdatePoll); kzlpUpdatePoll = null; }
+      document.getElementById('btnKzlpUpdate').disabled = false;
+      if (j.data.status === 'done') {
+        showMsg('kzlpUpdMsg', `Güncellendi: v${j.data.kzlp_version}`, true);
+        toast('Panel güncellendi — sayfa yenileniyor');
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showMsg('kzlpUpdMsg', 'Güncelleme hatası. Logu kontrol edin.', false);
+      }
+    }
+
+    document.getElementById('btnKzlpCheck').onclick = () => checkKzlpVersion(false);
+    document.getElementById('btnKzlpUpdate').onclick = async () => {
+      if (!confirm(`KZLP panel v${latestKzlp || '?'} kurulsun mu? Sayfa yenilenecek.`)) return;
+      const btn = document.getElementById('btnKzlpUpdate');
+      btn.disabled = true;
+      showMsg('kzlpUpdMsg', 'İndiriliyor…', true);
+      document.getElementById('kzlpUpdLog').style.display = 'block';
+      const j = await api('kzlp_update');
+      if (!j.ok) {
+        btn.disabled = false;
+        showMsg('kzlpUpdMsg', j.error, false);
+        return;
+      }
+      kzlpUpdatePoll = setInterval(pollKzlpUpdate, 2000);
+      pollKzlpUpdate();
+    };
+
     document.getElementById('btnCheck').onclick = async () => {
       const j = await api('version_check');
       if (!j.ok) { showMsg('updMsg', j.error, false); return; }
@@ -942,6 +1041,7 @@
         await refreshStatus();
         await loadSites();
         await loadBackups();
+        await checkKzlpVersion(true);
       } catch (e) {
         toast('API hatası: ' + e.message, true);
       }

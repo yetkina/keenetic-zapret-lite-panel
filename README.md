@@ -15,7 +15,7 @@ Panel, Zapret’i başlat/durdur, Keenetic **Zapret bağlantı politikasına** b
 | **Cihaz listesi** | Politikadaki MAC, IP ve Keenetic’teki **cihaz adı** (ör. `PC YA Mac Mini`). |
 | **Siteler** | Öğrenilen (DPI engeli), istisna ve hedef domain listeleri. |
 | **Yedek** | Zapret config + hostlist + panel ayarlarını `.tar.gz` olarak saklar. |
-| **Güncelleme** | [bol-van/zapret](https://github.com/bol-van/zapret) son sürümünü indirir (yalnızca `nfqws` ikilisi). |
+| **Güncelleme** | Zapret: [bol-van/zapret](https://github.com/bol-van/zapret) `nfqws` ikilisi. KZLP: [bu repo](https://github.com/yetkina/keenetic-zapret-lite-panel) panel dosyaları (otomatik). |
 
 Panel **tüm internet geçmişini** kaydetmez. *Öğrenilen* liste, politikalı cihazlarda DPI engeli tespit edilen domainleri otomatik yazar.
 
@@ -101,8 +101,24 @@ Config, hostlist dosyaları ve panel ayarlarını içerir.
 
 ### Güncelleme
 
-**Sürüm kontrol** → GitHub’daki son zapret etiketi ile karşılaştırır.  
-**Güncelle** → yalnızca `nfqws` ikilisini indirir; kısa kesinti olabilir.
+**Zapret (nfqws)** — **Sürüm kontrol** → [bol-van/zapret](https://github.com/bol-van/zapret) son etiketi. **Güncelle** → yalnızca `nfqws` ikilisi; kısa kesinti olabilir.
+
+**KZLP panel** — **Zapret** menüsünde *KZLP Panel sürümü*:
+
+- Kurulu sürüm: `/opt/etc/kzlp/kzlp.version`
+- Değişiklik notları: `/opt/etc/kzlp/CHANGELOG.md` (panelde gösterilir)
+- Açılışta GitHub ile otomatik karşılaştırma; yeni sürüm varsa **Paneli güncelle** etkinleşir
+- Güncelleme: GitHub **release** etiketi (ör. `v1.1.0`) veya `main` arşivi; `scripts/kzlp-self-update.sh`
+
+Sürüm dosyaları (repo kökü):
+
+| Dosya | Açıklama |
+|-------|----------|
+| `VERSION` | Yayınlanan panel sürümü |
+| `CHANGELOG.md` | Her sürümde Eklendi / Düzeltildi / Değiştirildi |
+| `etc/kzlp/kzlp.version` | Şablon (kurulumda `/opt/etc/kzlp/kzlp.version` olur) |
+
+Yeni panel sürümü yayınlamak: `VERSION` ve `CHANGELOG.md` güncelleyin → commit → GitHub’da `vX.Y.Z` release oluşturun.
 
 ## Zapret config (politika modu)
 
@@ -133,10 +149,14 @@ curl -s "http://127.0.0.1:8088/api.cgi?action=status"
 ## Proje yapısı
 
 ```
-www/kzlp/          # index.html + api.cgi
-etc/kzlp/          # settings.json
-etc/lighttpd/      # kzlp.conf (port 8088)
-scripts/deploy.sh  # kurulum
+www/kzlp/                    # index.html + api.cgi
+etc/kzlp/                    # settings.json, kzlp.version
+etc/lighttpd/                # kzlp.conf (port 8088)
+scripts/deploy.sh            # kurulum
+scripts/kzlp-self-update.sh  # panel GitHub guncellemesi
+scripts/changelog-parse.sh   # CHANGELOG -> JSON
+VERSION                      # panel surumu
+CHANGELOG.md                 # degisiklik gunlugu
 ```
 
 ## Lisans ve teşekkür

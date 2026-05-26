@@ -3,7 +3,8 @@
 export PATH="/opt/sbin:/opt/bin:/opt/usr/sbin:/opt/usr/bin:/sbin:/bin"
 
 KZLP_DIR="/opt/etc/kzlp"
-VERSION_FILE="$KZLP_DIR/installed.version"
+KZLP_VERSION_FILE="$KZLP_DIR/kzlp.version"
+ZAPRET_VERSION_FILE="$KZLP_DIR/zapret.version"
 ZAPRET="/opt/zapret"
 INIT="/opt/etc/init.d/S90-zapret"
 EXCLUDE="$ZAPRET/ipset/zapret-hosts-user-exclude.txt"
@@ -14,6 +15,7 @@ BACKUP_DIR="/opt/etc/kzlp/backups"
 POLICY_CHAIN="_NDM_HOTSPOT_PREROUTING_MANGL"
 POLICY_MARK="0xffffaaa"
 GITHUB_REPO="bol-van/zapret"
+KZLP_GITHUB_REPO="yetkina/keenetic-zapret-lite-panel"
 
 POST_BODY=""
 if [ "$REQUEST_METHOD" = "POST" ]; then
@@ -200,9 +202,71 @@ else
   kzlp_remove_legacy_panels() { return 0; }
 fi
 
-installed_version() {
-  v=$(cat "$VERSION_FILE" 2>/dev/null | tr -d '\n\r')
+CHANGELOG_SH="$KZLP_DIR/changelog-parse.sh"
+[ -f "$CHANGELOG_SH" ] && . "$CHANGELOG_SH" || {
+  changelog_json_for() { echo '{"version":"","added":[],"fixed":[],"changed":[]}'; }
+}
+
+# Eski kurulum: installed.version = zapret surumu
+if [ -f "$KZLP_DIR/installed.version" ] && [ ! -f "$ZAPRET_VERSION_FILE" ]; then
+  grep -qE '^v[0-9]' "$KZLP_DIR/installed.version" 2>/dev/null && \
+    mv "$KZLP_DIR/installed.version" "$ZAPRET_VERSION_FILE" 2>/dev/null
+fi
+
+norm_ver() {
+  echo "$1" | sed 's/^[vV]//;s/[[:space:]]//g'
+}
+
+version_gt() {
+  _a=$(norm_ver "$1")
+  _b=$(norm_ver "$2")
+  [ -z "$_a" ] || [ -z "$_b" ] && return 1
+  _hi=$(printf '%s\n%s' "$_a" "$_b" | sort -V | tail -1)
+  [ "$_hi" = "$_b" ] && [ "$_a" != "$_b" ]
+}
+
+zapret_version() {
+  v=$(cat "$ZAPRET_VERSION_FILE" 2>/dev/null | tr -d '\n\r')
   [ -n "$v" ] && echo "$v" || echo "bilinmiyor"
+}
+
+kzlp_version() {
+  v=$(cat "$KZLP_VERSION_FILE" 2>/dev/null | tr -d '\n\r')
+  [ -n "$v" ] && echo "$v" || echo "bilinmiyor"
+}
+
+kzlp_github_repo() {
+  _repo="$KZLP_GITHUB_REPO"
+  if [ -f "$KZLP_DIR/settings.json" ]; then
+    _r=$(grep '"kzlp_github_repo"' "$KZLP_DIR/settings.json" 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/')
+    [ -n "$_r" ] && _repo="$_r"
+  fi
+  echo "$_repo"
+}
+
+# GitHub etiketi (v1.1.0 veya main)
+github_kzlp_latest_tag() {
+  _repo=$(kzlp_github_repo)
+  _tag=""
+  raw=$(curl -fsSL -m 25 -H "User-Agent: KZLP" \
+    "https://api.github.com/repos/$_repo/releases/latest" 2>/dev/null) || true
+  _tag=$(echo "$raw" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
+  if [ -z "$_tag" ]; then
+    raw=$(curl -fsSL -m 25 -H "User-Agent: KZLP" \
+      "https://api.github.com/repos/$_repo/tags?per_page=5" 2>/dev/null) || true
+    _tag=$(echo "$raw" | sed -n 's/.*"name": *"\([^"]*\)".*/\1/p' | head -1)
+  fi
+  if [ -z "$_tag" ]; then
+    _v=$(curl -fsSL -m 15 "https://raw.githubusercontent.com/$_repo/main/VERSION" 2>/dev/null | tr -d '\r\n ')
+    if [ -n "$_v" ]; then
+      case "$_v" in v*) _tag="$_v" ;; *) _tag="v$_v" ;; esac
+    fi
+  fi
+  [ -n "$_tag" ] && echo "$_tag" || echo "main"
+}
+
+github_kzlp_latest() {
+  norm_ver "$(github_kzlp_latest_tag)"
 }
 
 KEENETIC_HOSTMAP="/tmp/ndnproxyhostmap.conf"
@@ -341,8 +405,9 @@ case "$ACTION" in
     if [ -f "$EXCLUDE" ]; then
       exc=$(grep -vE '^#|^$|^[0-9.:a-fA-F/]' "$EXCLUDE" 2>/dev/null | wc -l | tr -d ' ')
     fi
-    ver=$(installed_version)
-    json_ok "{\"running\":$running,\"zapret_installed\":$zinst,\"installed_version\":\"$ver\",\"policy_mode\":true,\"policy_mark\":\"$POLICY_MARK\",\"policy_users\":$users,\"exceptions_count\":$exc,\"wan\":\"$wan\"}"
+    zver=$(zapret_version)
+    kver=$(kzlp_version)
+    json_ok "{\"running\":$running,\"zapret_installed\":$zinst,\"zapret_version\":\"$zver\",\"kzlp_version\":\"$kver\",\"policy_mode\":true,\"policy_mark\":\"$POLICY_MARK\",\"policy_users\":$users,\"exceptions_count\":$exc,\"wan\":\"$wan\"}"
     ;;
   dashboard_live)
     running=false
@@ -370,10 +435,11 @@ EOF
     wan_e=$(json_escape "$wan")
     lan=$(json_escape "$(detect_lan_ip)")
     isp_e=$(json_escape "$_ispn")
-    ver=$(installed_version)
+    zver=$(zapret_version)
+    kver=$(kzlp_version)
     _ct_json="null"
     [ -n "$_ct" ] && _ct_json="$_ct"
-    json_ok "{\"hostname\":\"$host\",\"model\":\"$model\",\"firmware\":\"$fw\",\"wan\":\"$wan_e\",\"lan_ip\":\"$lan\",\"isp\":\"$isp_e\",\"zapret_installed\":$zinst,\"zapret_running\":$running,\"zapret_version\":\"$ver\",\"policy_devices\":$_policy_n,\"learned_domains\":$_learned,\"lighttpd\":$_lt,\"load1\":\"$_l1\",\"load5\":\"$_l5\",\"load15\":\"$_l15\",\"ram_used_kb\":${_mu:-0},\"ram_total_kb\":${_mt:-0},\"ram_pct\":$_ram_pct,\"disk_pct\":${_dp:-0},\"disk_used_kb\":${_du:-0},\"disk_total_kb\":${_dt:-0},\"uptime_sec\":${_up:-0},\"cpu_temp_c\":$_ct_json}"
+    json_ok "{\"hostname\":\"$host\",\"model\":\"$model\",\"firmware\":\"$fw\",\"wan\":\"$wan_e\",\"lan_ip\":\"$lan\",\"isp\":\"$isp_e\",\"zapret_installed\":$zinst,\"zapret_running\":$running,\"zapret_version\":\"$zver\",\"kzlp_version\":\"$kver\",\"policy_devices\":$_policy_n,\"learned_domains\":$_learned,\"lighttpd\":$_lt,\"load1\":\"$_l1\",\"load5\":\"$_l5\",\"load15\":\"$_l15\",\"ram_used_kb\":${_mu:-0},\"ram_total_kb\":${_mt:-0},\"ram_pct\":$_ram_pct,\"disk_pct\":${_dp:-0},\"disk_used_kb\":${_du:-0},\"disk_total_kb\":${_dt:-0},\"uptime_sec\":${_up:-0},\"cpu_temp_c\":$_ct_json}"
     ;;
   install_info)
     zinst=false
@@ -439,10 +505,44 @@ EOF
     raw=$(curl -fsSL -m 25 -H "User-Agent: KZLP" "https://api.github.com/repos/$GITHUB_REPO/releases/latest" 2>/dev/null) \
       || json_err "GitHub erisilemedi"
     tag=$(echo "$raw" | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
-    cur=$(installed_version)
+    cur=$(zapret_version)
     ua=false
-    [ "$cur" != "$tag" ] && ua=true
+    version_gt "$tag" "$cur" && ua=true
     json_ok "{\"installed\":\"$cur\",\"latest\":\"$tag\",\"update_available\":$ua}"
+    ;;
+  kzlp_version_check)
+    cur=$(kzlp_version)
+    latest=$(github_kzlp_latest)
+    _tag=$(github_kzlp_latest_tag)
+    [ -z "$latest" ] || [ "$latest" = "main" ] && [ "$_tag" = "main" ] && json_err "GitHub surum bilgisi alinamadi"
+    ua=false
+    version_gt "$latest" "$cur" && ua=true
+    _cl=$(changelog_json_for "$(norm_ver "$cur")" "$KZLP_DIR/CHANGELOG.md")
+    _cl_latest=$(changelog_json_for "$(norm_ver "$latest")" "$KZLP_DIR/CHANGELOG.md")
+    _repo_e=$(json_escape "$(kzlp_github_repo)")
+    json_ok "{\"installed\":\"$cur\",\"latest\":\"$latest\",\"latest_tag\":\"$_tag\",\"update_available\":$ua,\"github_repo\":\"$_repo_e\",\"changelog\":$_cl,\"changelog_latest\":$_cl_latest}"
+    ;;
+  kzlp_update)
+    if [ -f /opt/tmp/kzlp_panel_update.status ] && [ "$(cat /opt/tmp/kzlp_panel_update.status 2>/dev/null)" = "running" ]; then
+      json_err "Panel guncellemesi zaten calisiyor"
+    fi
+    latest=$(github_kzlp_latest)
+    _tag=$(github_kzlp_latest_tag)
+    upd="$KZLP_DIR/kzlp-self-update.sh"
+    [ -x "$upd" ] || json_err "Guncelleme scripti yok"
+    rm -f /opt/tmp/kzlp_panel_update.done
+    echo "running" > /opt/tmp/kzlp_panel_update.status
+    : > /opt/tmp/kzlp_panel_update.log
+    ( KZLP_GITHUB_REPO="$(kzlp_github_repo)" "$upd" "$_tag" >>/opt/tmp/kzlp_panel_update.log 2>&1 ) &
+    json_ok "{\"started\":true,\"target\":\"$latest\",\"tag\":\"$_tag\"}"
+    ;;
+  kzlp_update_status)
+    st="idle"
+    [ -f /opt/tmp/kzlp_panel_update.status ] && st=$(cat /opt/tmp/kzlp_panel_update.status 2>/dev/null | tr -d '\r\n')
+    log=""
+    [ -f /opt/tmp/kzlp_panel_update.log ] && log=$(tail -n 60 /opt/tmp/kzlp_panel_update.log 2>/dev/null | json_escape)
+    kv=$(kzlp_version)
+    json_ok "{\"status\":\"$st\",\"log_tail\":\"$log\",\"kzlp_version\":\"$kv\"}"
     ;;
   update)
     raw=$(curl -fsSL -m 25 -H "User-Agent: KZLP" "https://api.github.com/repos/$GITHUB_REPO/releases/latest" 2>/dev/null) \
@@ -457,7 +557,7 @@ EOF
     tar -xzf "$tmp/z.tgz" -C "$tmp" || json_err "Arsiv acilamadi"
     dir=$(ls -1 "$tmp" | head -1)
     cp -f "$tmp/$dir/nfq/nfqws" "$ZAPRET/nfq/nfqws" && chmod +x "$ZAPRET/nfq/nfqws"
-    echo "$tag" > "$VERSION_FILE"
+    echo "$tag" > "$ZAPRET_VERSION_FILE"
     $INIT restart >/dev/null 2>&1
     rm -rf "$tmp"
     running=false
@@ -524,7 +624,8 @@ EOF
     name="kzlp_$(date '+%Y%m%d_%H%M%S').tar.gz"
     path="$BACKUP_DIR/$name"
     tar -czf "$path" "$ZAPRET/config" "$EXCLUDE" "$ZAPRET/ipset/zapret-hosts-user.txt" \
-      "$KZLP_DIR/settings.json" "$VERSION_FILE" 2>/dev/null || json_err "Yedek olusturulamadi"
+      "$KZLP_DIR/settings.json" "$ZAPRET_VERSION_FILE" "$KZLP_VERSION_FILE" "$KZLP_DIR/CHANGELOG.md" 2>/dev/null \
+      || json_err "Yedek olusturulamadi"
     sz=$(wc -c < "$path" | tr -d ' ')
     json_ok "{\"backup\":{\"name\":\"$name\",\"size\":$sz}}"
     ;;
@@ -538,7 +639,7 @@ EOF
     $INIT restart >/dev/null 2>&1
     running=false
     zapret_running && running=true
-    json_ok "{\"restored\":\"$name\",\"running\":$running,\"installed_version\":\"$(installed_version)\"}"
+    json_ok "{\"restored\":\"$name\",\"running\":$running,\"zapret_version\":\"$(zapret_version)\",\"kzlp_version\":\"$(kzlp_version)\"}"
     ;;
   *)
     json_err "Bilinmeyen islem"
