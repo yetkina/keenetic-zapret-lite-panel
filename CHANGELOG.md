@@ -2,6 +2,18 @@
 
 Tüm önemli değişiklikler [Semantic Versioning](https://semver.org/) ile sürümlenir.
 
+## [1.1.6] - 2026-05-26
+
+### Eklendi
+- Özel KZLP marka logosu (yan menü)
+- Yan menüde bölüm simgeleri (nav ikonları)
+- **Zapret** alt menüsü: **Kurulum** ve **Panel sürümü**
+- Canlı panel üst çubuğunda KZLP durum düğmesi (çalışıyor: yeşil, durmuş: mor)
+
+### Kaldırıldı
+- Üst çubuktaki saat ve manuel yenileme düğmesi
+
+
 ## [1.1.5] - 2026-05-26
 
 ### Düzeltildi

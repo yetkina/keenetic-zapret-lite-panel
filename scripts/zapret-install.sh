@@ -10,7 +10,7 @@ STATUS="/opt/tmp/kzlp_install.status"
 DONE="/opt/tmp/kzlp_install.done"
 ZAPRET="/opt/zapret"
 KZLP_DIR="/opt/etc/kzlp"
-VERSION_FILE="$KZLP_DIR/installed.version"
+ZAPRET_VERSION_FILE="$KZLP_DIR/zapret.version"
 GITHUB_REPO="bol-van/zapret"
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
@@ -149,7 +149,7 @@ touch "$AUTO_HOSTS" "$AUTO_DEBUG" \
   "$ZAPRET/ipset/zapret-hosts-user.txt"
 chown nobody "$AUTO_HOSTS" "$AUTO_DEBUG" 2>/dev/null || true
 
-echo "$tag" > "$VERSION_FILE"
+echo "$tag" > "$ZAPRET_VERSION_FILE"
 echo "$ISP_ID" > "$KZLP_DIR/installed.isp"
 
 # Eski panelleri kaldir

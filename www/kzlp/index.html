@@ -26,31 +26,81 @@
     }
     .app { display: flex; min-height: 100vh; }
     .sidebar {
-      width: 200px;
+      width: 220px;
       flex-shrink: 0;
       background: var(--card);
       border-right: 1px solid var(--border);
       padding: 1rem 0;
     }
     .sidebar .brand {
-      padding: 0 1rem 1rem;
-      font-size: 0.75rem;
-      color: var(--muted);
-      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0 0.85rem 1rem;
       margin-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
     }
-    .sidebar .brand strong { display: block; color: var(--text); font-size: 0.9rem; }
-    .nav-item {
+    .brand-logo {
+      width: 2.75rem;
+      height: 2.75rem;
+      flex-shrink: 0;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.25);
+    }
+    .brand-logo svg { width: 100%; height: 100%; display: block; }
+    .brand-text { min-width: 0; }
+    .brand-text strong {
       display: block;
+      color: var(--text);
+      font-size: 1rem;
+      letter-spacing: 0.04em;
+      line-height: 1.2;
+    }
+    .brand-text span {
+      display: block;
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-top: 0.15rem;
+      line-height: 1.3;
+    }
+    .nav-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.55rem;
       width: 100%;
       text-align: left;
       border: none;
       border-radius: 0;
       background: transparent;
-      padding: 0.65rem 1rem;
+      padding: 0.7rem 0.85rem;
       color: var(--muted);
       border-left: 3px solid transparent;
+      cursor: pointer;
+      font: inherit;
     }
+    .nav-ico {
+      width: 1.65rem;
+      height: 1.65rem;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: rgba(59, 130, 246, 0.1);
+      color: var(--accent);
+      margin-top: 0.05rem;
+    }
+    .nav-item.active .nav-ico {
+      background: rgba(59, 130, 246, 0.22);
+      color: #93c5fd;
+    }
+    .nav-item.warn .nav-ico {
+      background: rgba(234, 179, 8, 0.15);
+      color: var(--warn);
+    }
+    .nav-ico .ico svg { width: 1rem; height: 1rem; }
+    .nav-label { flex: 1; min-width: 0; line-height: 1.35; font-size: 0.88rem; }
     .nav-item:hover { background: rgba(59,130,246,0.08); color: var(--text); }
     .nav-item.active {
       color: var(--accent);
@@ -62,10 +112,34 @@
       font-size: 0.65rem;
       font-weight: 500;
       color: var(--muted);
-      margin-top: 0.15rem;
+      margin-top: 0.12rem;
     }
     .nav-item.active .nav-ver { color: var(--accent); opacity: 0.85; }
     .nav-item.warn { color: var(--warn); }
+    .nav-item.active-parent {
+      color: var(--text);
+      background: rgba(59, 130, 246, 0.06);
+    }
+    .nav-item.active-parent .nav-ico {
+      background: rgba(59, 130, 246, 0.14);
+      color: var(--accent);
+    }
+    .nav-group { margin: 0.15rem 0; }
+    .nav-children {
+      margin: 0.15rem 0 0.35rem 1.15rem;
+      padding: 0.2rem 0 0.2rem 0.55rem;
+      border-left: 2px solid rgba(59, 130, 246, 0.22);
+    }
+    .nav-item.nav-sub {
+      padding: 0.55rem 0.7rem;
+      font-size: 0.84rem;
+    }
+    .nav-item.nav-sub .nav-ico {
+      width: 1.45rem;
+      height: 1.45rem;
+      margin-top: 0;
+    }
+    .nav-item.nav-sub .nav-ico .ico svg { width: 0.92rem; height: 0.92rem; }
     .main { flex: 1; min-width: 0; }
     .wrap { max-width: 920px; margin: 0 auto; padding: 1.25rem; }
     .page { display: none; }
@@ -100,6 +174,9 @@
       .sidebar .brand { width: 100%; border: none; margin: 0; padding: 0.5rem; }
       .nav-item { width: auto; border-left: none; border-bottom: 2px solid transparent; padding: 0.5rem 0.75rem; }
       .nav-item.active { border-bottom-color: var(--accent); border-left: none; }
+      .nav-group { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem; }
+      .nav-children { margin: 0; padding: 0; border-left: none; display: contents; }
+      .nav-item.nav-sub { font-size: 0.8rem; }
     }
     header {
       display: flex;
@@ -268,9 +345,63 @@
       font-weight: 600;
       color: var(--accent);
       letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
     }
-    .live-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .live-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: stretch; justify-content: flex-end; }
+    .kzlp-status-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.65rem;
+      min-width: 8.2rem;
+      padding: 0.4rem 0.9rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(15, 20, 25, 0.65);
+      cursor: pointer;
+      font: inherit;
+      text-align: center;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    }
+    .kzlp-status-btn:hover { transform: translateY(-1px); }
+    .kzlp-status-btn .kzlp-ver {
+      font-size: 0.82rem;
+      font-weight: 700;
+      line-height: 1.2;
+      color: var(--text);
+    }
+    .kzlp-status-btn .kzlp-st {
+      font-size: 0.66rem;
+      margin-top: 0.2rem;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+    .kzlp-status-btn.ok {
+      border-color: rgba(34, 197, 94, 0.55);
+      background: rgba(34, 197, 94, 0.14);
+    }
+    .kzlp-status-btn.ok .kzlp-st { color: #4ade80; }
+    .kzlp-status-btn.update {
+      border-color: rgba(167, 139, 250, 0.55);
+      background: rgba(139, 92, 246, 0.18);
+    }
+    .kzlp-status-btn.update .kzlp-ver { color: #ddd6fe; }
+    .kzlp-status-btn.update .kzlp-st { color: #c4b5fd; }
+    .kzlp-status-btn.unknown .kzlp-st { color: var(--muted); }
+    .section-flash {
+      animation: kzlpSectionFlash 1.8s ease;
+    }
+    @keyframes kzlpSectionFlash {
+      0%, 100% { box-shadow: none; }
+      40% { box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.45); }
+    }
     .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
       font-size: 0.75rem;
       padding: 0.3rem 0.65rem;
       border-radius: 6px;
@@ -279,6 +410,7 @@
       color: var(--muted);
     }
     .pill strong { color: var(--text); font-weight: 600; }
+    .pill .ico svg { width: 0.95em; height: 0.95em; }
     .live-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
@@ -291,14 +423,74 @@
       border-radius: 12px;
       padding: 1rem;
     }
+    .ico {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      line-height: 0;
+    }
+    .ico svg {
+      width: 1.15em;
+      height: 1.15em;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .tile-head {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      margin-bottom: 0.65rem;
+    }
+    .tile-icon {
+      width: 2.1rem;
+      height: 2.1rem;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(59, 130, 246, 0.14);
+      color: var(--accent);
+    }
+    .tile-icon.warn { background: rgba(234, 179, 8, 0.12); color: var(--warn); }
+    .tile-icon.ok { background: rgba(34, 197, 94, 0.12); color: var(--ok); }
+    .tile-icon.hot { background: rgba(239, 68, 68, 0.12); color: #f87171; }
     .tile h3 {
-      margin: 0 0 0.65rem;
+      margin: 0;
       font-size: 0.72rem;
       text-transform: uppercase;
       letter-spacing: 0.06em;
       color: var(--muted);
       font-weight: 600;
     }
+    .live-top .title-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+    }
+    .live-top .title-ico {
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(59, 130, 246, 0.18);
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    .live-top .title-ico svg { width: 1.35rem; height: 1.35rem; }
+    .facts dt {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .facts dt .ico { color: var(--accent); opacity: 0.85; }
+    .live-actions button { display: inline-flex; align-items: center; gap: 0.3rem; }
+    .svc { display: inline-flex; align-items: center; gap: 0.3rem; }
     .tile .big {
       font-size: 1.5rem;
       font-weight: 700;
@@ -354,23 +546,50 @@
 <body>
   <div class="app">
     <aside class="sidebar">
-      <div class="brand"><strong>KZLP</strong> Keenetic Zapret</div>
-      <button type="button" class="nav-item active" data-page="live">Panel (Canlı) <span class="nav-ver" id="navLiveVer"></span></button>
-      <button type="button" class="nav-item" data-page="dashboard">Zapret</button>
-      <button type="button" class="nav-item" data-page="install" id="navInstall">Zapret Kurulum</button>
+      <div class="brand">
+        <span class="brand-logo" aria-hidden="true" id="brandLogo"></span>
+        <div class="brand-text">
+          <strong>KZLP</strong>
+          <span>Keenetic · Zapret · özgür internet</span>
+        </div>
+      </div>
+      <button type="button" class="nav-item active" data-page="live">
+        <span class="nav-ico" id="navIcoLive"></span>
+        <span class="nav-label">Panel (Canlı)<span class="nav-ver" id="navLiveVer"></span></span>
+      </button>
+      <div class="nav-group" id="navGroupZapret">
+        <button type="button" class="nav-item" data-page="dashboard" id="navZapret">
+          <span class="nav-ico" id="navIcoZapret"></span>
+          <span class="nav-label">Zapret</span>
+        </button>
+        <div class="nav-children">
+          <button type="button" class="nav-item nav-sub" data-page="install" id="navInstall">
+            <span class="nav-ico" id="navIcoInstall"></span>
+            <span class="nav-label"><span id="navInstallLabel">Kurulum</span></span>
+          </button>
+          <button type="button" class="nav-item nav-sub" data-page="kzlp-version" id="navKzlpVersion">
+            <span class="nav-ico" id="navIcoKzlpVer"></span>
+            <span class="nav-label">Panel sürümü</span>
+          </button>
+        </div>
+      </div>
     </aside>
     <div class="main">
   <div id="page-live" class="page active wrap wrap-wide">
     <div class="live-top">
-      <div>
-        <h1 id="liveTitle">—</h1>
-        <p class="model-badge" id="liveModelBadge">—</p>
-        <p class="sub" id="liveSubtitle">Canlı özet · otomatik yenileme 15 sn</p>
+      <div class="title-row">
+        <span class="title-ico" aria-hidden="true" id="liveTitleIco"></span>
+        <div>
+          <h1 id="liveTitle">—</h1>
+          <p class="model-badge" id="liveModelBadge">—</p>
+          <p class="sub" id="liveSubtitle">Canlı özet · otomatik yenileme 15 sn</p>
+        </div>
       </div>
       <div class="live-meta">
-        <span class="pill" id="liveKzlpVer">KZLP —</span>
-        <span class="pill" id="liveClock">—</span>
-        <button type="button" id="btnLiveRefresh">Yenile</button>
+        <button type="button" class="kzlp-status-btn unknown" id="kzlpStatusBtn" title="KZLP panel sürümü ve güncelleme">
+          <span class="kzlp-ver">KZLP v—</span>
+          <span class="kzlp-st">…</span>
+        </button>
       </div>
     </div>
     <div class="live-grid" id="liveTiles"></div>
@@ -411,7 +630,7 @@
       <p class="empty" id="policyEmpty" style="display:none">Politikaya atanmış cihaz bulunamadı.</p>
     </section>
 
-    <section>
+    <section id="section-kzlp-version">
       <h2>KZLP Panel sürümü</h2>
       <p class="info" id="kzlpVersionLine">—</p>
       <div id="kzlpChangelog" class="changelog-box"></div>
@@ -541,6 +760,83 @@
       return v + ' KB';
     };
 
+    /* KZLP marka: Keenetic router + Zapret kalkan + özgür internet (küre/dalga) */
+    const KZLP_LOGO = `<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="kzlpBg" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#1e3a5f"/>
+          <stop offset="100%" stop-color="#0f2a1f"/>
+        </linearGradient>
+        <linearGradient id="kzlpRing" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#3b82f6"/>
+          <stop offset="50%" stop-color="#22c55e"/>
+          <stop offset="100%" stop-color="#38bdf8"/>
+        </linearGradient>
+      </defs>
+      <rect width="48" height="48" rx="13" fill="url(#kzlpBg)"/>
+      <rect x="3" y="3" width="42" height="42" rx="11" fill="none" stroke="url(#kzlpRing)" stroke-width="1.5" opacity="0.85"/>
+      <path d="M10 34h28v3H10z" fill="#94a3b8"/>
+      <path d="M14 34V20a10 10 0 0 1 20 0v14" stroke="#e2e8f0" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <circle cx="24" cy="32" r="1.5" fill="#3b82f6"/>
+      <path d="M24 9l9 4.5v7.5c0 5.5-3.8 10.2-9 11-5.2-.8-9-5.5-9-11V13.5L24 9z"
+        fill="rgba(34,197,94,0.2)" stroke="#22c55e" stroke-width="1.6" stroke-linejoin="round"/>
+      <circle cx="24" cy="21" r="7" fill="none" stroke="#38bdf8" stroke-width="1.4" opacity="0.9"/>
+      <path d="M17 21h14M24 14c3.5 0 6.5 2.8 7 6.5" stroke="#38bdf8" stroke-width="1.2" fill="none" stroke-linecap="round" opacity="0.85"/>
+      <path d="M30 17l3-2M18 17l-3-2" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M8 26c2-1 4-1 6 0s4 1 6 0 4 1 6 0 4-1 6 0" stroke="#3b82f6" stroke-width="1" fill="none" opacity="0.5" stroke-linecap="round"/>
+    </svg>`;
+
+    const ICONS = {
+      live: '<svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>',
+      install: '<svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>',
+      zapretInstall: '<svg viewBox="0 0 24 24"><path d="M12 3v8"/><path d="M8.5 8.5 12 12l3.5-3.5"/><rect x="4" y="14" width="16" height="6" rx="1.5"/><path d="M9 17h6"/><circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none"/></svg>',
+      freedom: '<svg viewBox="0 0 24 24"><path d="M2 12c2-4 6-6 10-6 4 0 8 2 10 6-2 4-6 6-10 6-4 0-8-2-10-6z"/><path d="M12 6v12M8 10l4-4 4 4"/></svg>',
+      router: '<svg viewBox="0 0 24 24"><rect x="2" y="14" width="20" height="6" rx="1"/><path d="M6 14V8a6 6 0 0 1 12 0v6"/><circle cx="12" cy="17" r="1"/></svg>',
+      chip: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>',
+      shield: '<svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 9.5-8 10-4.5-.5-8-5-8-10V6l8-4z"/></svg>',
+      cpu: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>',
+      memory: '<svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01"/></svg>',
+      usb: '<svg viewBox="0 0 24 24"><circle cx="12" cy="4" r="1"/><path d="M12 5v8M9 18l3 3 3-3M10 13h4"/></svg>',
+      users: '<svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+      globe: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg>',
+      temp: '<svg viewBox="0 0 24 24"><path d="M14 14.76V5a2 2 0 0 0-4 0v9.76a4 4 0 1 0 4 0z"/></svg>',
+      tag: '<svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.5"/></svg>',
+      firmware: '<svg viewBox="0 0 24 24"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>',
+      wan: '<svg viewBox="0 0 24 24"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>',
+      lan: '<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>',
+      isp: '<svg viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V9l7-5 7 5v12"/><path d="M9 21v-6h6v6"/></svg>',
+      home: '<svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>',
+      refresh: '<svg viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
+      clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+      play: '<svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3" fill="currentColor" stroke="none"/></svg>',
+      stop: '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1" fill="currentColor" stroke="none"/></svg>',
+      restart: '<svg viewBox="0 0 24 24"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
+      panel: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>',
+      check: '<svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>'
+    };
+
+    const ico = (name, extra) => {
+      const svg = ICONS[name] || ICONS.chip;
+      return `<span class="ico${extra ? ' ' + extra : ''}" aria-hidden="true">${svg}</span>`;
+    };
+
+    function initSidebarIcons() {
+      const logo = document.getElementById('brandLogo');
+      if (logo) logo.innerHTML = KZLP_LOGO;
+      const set = (id, name) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = ico(name);
+      };
+      set('navIcoLive', 'live');
+      set('navIcoZapret', 'shield');
+      set('navIcoInstall', 'zapretInstall');
+      set('navIcoKzlpVer', 'tag');
+    }
+    initSidebarIcons();
+
+    const tileHead = (icon, label, tone) =>
+      `<div class="tile-head"><span class="tile-icon${tone ? ' ' + tone : ''}">${ico(icon)}</span><h3>${label}</h3></div>`;
+
     const fmtUptime = s => {
       const u = Number(s) || 0;
       const d = Math.floor(u / 86400);
@@ -551,14 +847,70 @@
       return `${m} dk`;
     };
 
+    function scrollToKzlpVersion(flash) {
+      const el = document.getElementById('section-kzlp-version');
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (flash) {
+        el.classList.add('section-flash');
+        setTimeout(() => el.classList.remove('section-flash'), 2000);
+      }
+    }
+
+    function goToKzlpVersion() {
+      showPage('kzlp-version');
+      checkKzlpVersion(true);
+    }
+
+    function renderKzlpStatusBadge(d) {
+      const btn = document.getElementById('kzlpStatusBtn');
+      if (!btn) return;
+      const ver = d?.installed || '—';
+      btn.querySelector('.kzlp-ver').textContent = `KZLP v${ver}`;
+      btn.classList.remove('ok', 'update', 'unknown');
+      if (d?.update_available) {
+        btn.classList.add('update');
+        btn.querySelector('.kzlp-st').textContent = 'Yeni Versiyon Var';
+      } else if (d?.installed) {
+        btn.classList.add('ok');
+        btn.querySelector('.kzlp-st').textContent = 'Güncel';
+      } else {
+        btn.classList.add('unknown');
+        btn.querySelector('.kzlp-st').textContent = '—';
+      }
+    }
+
     function showPage(name) {
+      if (name === 'kzlp-version') {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => {
+          n.classList.remove('active');
+          n.classList.remove('active-parent');
+        });
+        document.getElementById('page-dashboard')?.classList.add('active');
+        document.querySelector('.nav-item[data-page="kzlp-version"]')?.classList.add('active');
+        document.getElementById('navZapret')?.classList.add('active-parent');
+        document.getElementById('navGroupZapret')?.classList.add('open');
+        location.hash = 'kzlp-version';
+        setTimeout(() => scrollToKzlpVersion(true), 80);
+        if (livePoll) { clearInterval(livePoll); livePoll = null; }
+        return;
+      }
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => {
+        n.classList.remove('active');
+        n.classList.remove('active-parent');
+      });
       const page = document.getElementById('page-' + name);
       if (page) page.classList.add('active');
       const nav = document.querySelector(`.nav-item[data-page="${name}"]`);
       if (nav) nav.classList.add('active');
-      const hashMap = { live: '', dashboard: 'zapret', install: 'install' };
+      const navZapret = document.getElementById('navZapret');
+      if ((name === 'install' || name === 'kzlp-version') && navZapret) navZapret.classList.add('active-parent');
+      if (name === 'dashboard' || name === 'install' || name === 'kzlp-version') {
+        document.getElementById('navGroupZapret')?.classList.add('open');
+      }
+      const hashMap = { live: '', dashboard: 'zapret', install: 'install', 'kzlp-version': 'kzlp-version' };
       location.hash = hashMap[name] || name;
       if (name === 'live') refreshLive();
       else if (livePoll) { clearInterval(livePoll); livePoll = null; }
@@ -566,37 +918,39 @@
 
     function renderLive(d) {
       const modelFull = (d.model || '').trim() || 'Keenetic';
+      document.getElementById('liveTitleIco').innerHTML = ICONS.router;
       document.getElementById('liveTitle').textContent = d.hostname || 'Keenetic';
-      document.getElementById('liveModelBadge').textContent = modelFull;
+      document.getElementById('liveModelBadge').innerHTML = `${ico('chip')} ${modelFull}`;
       document.getElementById('liveSubtitle').textContent =
         `${d.hostname || '—'} · ${d.isp || '—'} · WAN ${d.wan || '—'} · Firmware ${d.firmware || '—'}`;
-      document.getElementById('liveKzlpVer').textContent = `KZLP v${d.kzlp_version || '—'}`;
       const nv = document.getElementById('navLiveVer');
       if (nv) nv.textContent = d.kzlp_version ? `v${d.kzlp_version}` : '';
       const zapCls = d.zapret_running ? 'on' : 'off';
       const zapTxt = d.zapret_running ? 'Çalışıyor' : (d.zapret_installed ? 'Durdu' : 'Kurulu değil');
+      const zapTone = d.zapret_running ? 'ok' : (d.zapret_installed ? 'warn' : '');
+      const tempTone = d.cpu_temp_c != null && d.cpu_temp_c >= 70 ? 'hot' : '';
       const tiles = [
-        { t: 'Zapret', v: zapTxt, s: `Sürüm ${d.zapret_version || '—'}`, actions: true },
-        { t: 'CPU yükü', v: d.load1, s: `1 / 5 / 15 dk: ${d.load1} · ${d.load5} · ${d.load15}` },
-        { t: 'Bellek', v: `${d.ram_pct}%`, s: `${fmtKb(d.ram_used_kb)} / ${fmtKb(d.ram_total_kb)}`, meter: d.ram_pct },
-        { t: 'USB depolama (/opt)', v: `${d.disk_pct}%`, s: `${fmtKb(d.disk_used_kb)} / ${fmtKb(d.disk_total_kb)}`, meter: d.disk_pct },
-        { t: 'Politika', v: d.policy_devices, s: 'Zapret kuralındaki cihaz sayısı' },
-        { t: 'Öğrenilen domain', v: d.learned_domains, s: 'Otomatik hostlist' }
+        { icon: 'shield', tone: zapTone, t: 'Zapret', v: zapTxt, s: `Sürüm ${d.zapret_version || '—'}`, actions: true },
+        { icon: 'cpu', t: 'CPU yükü', v: d.load1, s: `1 / 5 / 15 dk: ${d.load1} · ${d.load5} · ${d.load15}` },
+        { icon: 'memory', t: 'Bellek', v: `${d.ram_pct}%`, s: `${fmtKb(d.ram_used_kb)} / ${fmtKb(d.ram_total_kb)}`, meter: d.ram_pct },
+        { icon: 'usb', t: 'USB depolama (/opt)', v: `${d.disk_pct}%`, s: `${fmtKb(d.disk_used_kb)} / ${fmtKb(d.disk_total_kb)}`, meter: d.disk_pct },
+        { icon: 'users', t: 'Politika', v: d.policy_devices, s: 'Zapret kuralındaki cihaz sayısı' },
+        { icon: 'globe', t: 'Öğrenilen domain', v: d.learned_domains, s: 'Otomatik hostlist' }
       ];
       const grid = document.getElementById('liveTiles');
       grid.innerHTML = '';
       tiles.forEach(tile => {
         const el = document.createElement('div');
         el.className = 'tile';
-        let html = `<h3>${tile.t}</h3><div class="big">${tile.v}</div><div class="subt">${tile.s}</div>`;
+        let html = `${tileHead(tile.icon, tile.t, tile.tone)}<div class="big">${tile.v}</div><div class="subt">${tile.s}</div>`;
         if (tile.meter != null) {
           html += `<div class="meter"><span style="width:${Math.min(100, tile.meter)}%"></span></div>`;
         }
         if (tile.actions) {
           html += `<div class="live-actions">
-            <button type="button" data-live-cmd="start">Başlat</button>
-            <button type="button" data-live-cmd="stop" class="danger">Durdur</button>
-            <button type="button" data-live-cmd="restart" class="primary">Yeniden başlat</button>
+            <button type="button" data-live-cmd="start">${ico('play')} Başlat</button>
+            <button type="button" data-live-cmd="stop" class="danger">${ico('stop')} Durdur</button>
+            <button type="button" data-live-cmd="restart" class="primary">${ico('restart')} Yeniden başlat</button>
           </div>`;
         }
         el.innerHTML = html;
@@ -604,27 +958,28 @@
       });
       const tempTile = document.createElement('div');
       tempTile.className = 'tile';
-      tempTile.innerHTML = `<h3>Sıcaklık / servisler</h3>
+      tempTile.innerHTML = `${tileHead('temp', 'Sıcaklık / servisler', tempTone)}
         <div class="big">${d.cpu_temp_c != null ? d.cpu_temp_c + ' °C' : '—'}</div>
         <div class="subt">Gövde sıcaklığı (Keenetic paneli ile uyumlu) · KZLP ${d.kzlp_version || '—'}</div>
         <div class="svc-row">
-          <span class="svc ${d.zapret_running ? 'on' : 'off'}">Zapret</span>
-          <span class="svc ${d.lighttpd ? 'on' : 'off'}">KZLP</span>
+          <span class="svc ${d.zapret_running ? 'on' : 'off'}">${ico('shield')} Zapret</span>
+          <span class="svc ${d.lighttpd ? 'on' : 'off'}">${ico('panel')} KZLP</span>
         </div>`;
       grid.appendChild(tempTile);
 
       const facts = document.getElementById('liveFacts');
       const rows = [
-        ['Model', d.model],
-        ['KZLP sürüm', d.kzlp_version ? `v${d.kzlp_version}` : '—'],
-        ['Zapret sürüm', d.zapret_version || '—'],
-        ['Firmware', d.firmware],
-        ['WAN', d.wan],
-        ['LAN IP', d.lan_ip],
-        ['ISS', d.isp],
-        ['Hostname', d.hostname]
+        ['chip', 'Model', d.model],
+        ['panel', 'KZLP sürüm', d.kzlp_version ? `v${d.kzlp_version}` : '—'],
+        ['shield', 'Zapret sürüm', d.zapret_version || '—'],
+        ['firmware', 'Firmware', d.firmware],
+        ['wan', 'WAN', d.wan],
+        ['lan', 'LAN IP', d.lan_ip],
+        ['isp', 'ISS', d.isp],
+        ['home', 'Hostname', d.hostname]
       ];
-      facts.innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v || '—'}</dd>`).join('');
+      facts.innerHTML = rows.map(([ic, k, v]) =>
+        `<dt>${ico(ic)} ${k}</dt><dd>${v || '—'}</dd>`).join('');
 
       grid.querySelectorAll('[data-live-cmd]').forEach(btn => {
         btn.onclick = async () => {
@@ -641,12 +996,10 @@
       const j = await api('dashboard_live');
       if (!j.ok) { toast(j.error, true); return; }
       renderLive(j.data);
-      const now = new Date();
-      document.getElementById('liveClock').innerHTML =
-        `<strong>${now.toLocaleTimeString('tr-TR')}</strong>`;
+      await checkKzlpVersion(true);
     }
 
-    document.getElementById('btnLiveRefresh').onclick = () => refreshLive();
+    document.getElementById('kzlpStatusBtn').onclick = () => goToKzlpVersion();
 
     document.querySelectorAll('.nav-item').forEach(btn => {
       btn.addEventListener('click', () => showPage(btn.dataset.page));
@@ -708,12 +1061,13 @@
         sel.appendChild(o);
       });
       const nav = document.getElementById('navInstall');
+      const navLbl = document.getElementById('navInstallLabel');
       if (!installInfo.zapret_installed) {
-        nav.classList.add('warn');
-        nav.textContent = 'Zapret Kurulum *';
+        nav?.classList.add('warn');
+        if (navLbl) navLbl.textContent = 'Kurulum *';
       } else {
-        nav.classList.remove('warn');
-        nav.textContent = 'Zapret Kurulum';
+        nav?.classList.remove('warn');
+        if (navLbl) navLbl.textContent = 'Kurulum';
       }
       return installInfo;
     }
@@ -938,11 +1292,13 @@
     async function checkKzlpVersion(silent) {
       const j = await api('kzlp_version_check');
       if (!j.ok) {
+        renderKzlpStatusBadge(null);
         if (!silent) showMsg('kzlpUpdMsg', j.error, false);
         return;
       }
       const d = j.data;
       latestKzlp = d.latest;
+      renderKzlpStatusBadge(d);
       document.getElementById('kzlpVersionLine').textContent =
         `Kurulu: v${d.installed} · GitHub: v${d.latest}` +
         (d.update_available ? ' · Güncelleme mevcut' : ' · Güncel');
@@ -1049,6 +1405,8 @@
           showPage('install');
         } else if (hash === 'zapret') {
           showPage('dashboard');
+        } else if (hash === 'kzlp-version') {
+          showPage('kzlp-version');
         } else {
           showPage('live');
         }
