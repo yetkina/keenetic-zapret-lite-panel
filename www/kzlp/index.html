@@ -261,7 +261,14 @@
       border: 1px solid var(--border);
       border-radius: 14px;
     }
-    .live-top h1 { margin: 0; font-size: 1.2rem; }
+    .live-top h1 { margin: 0; font-size: 1.2rem; line-height: 1.35; white-space: normal; word-break: break-word; }
+    .model-badge {
+      margin: 0.35rem 0 0;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.02em;
+    }
     .live-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
     .pill {
       font-size: 0.75rem;
@@ -357,6 +364,7 @@
     <div class="live-top">
       <div>
         <h1 id="liveTitle">—</h1>
+        <p class="model-badge" id="liveModelBadge">—</p>
         <p class="sub" id="liveSubtitle">Canlı özet · otomatik yenileme 15 sn</p>
       </div>
       <div class="live-meta">
@@ -557,7 +565,9 @@
     }
 
     function renderLive(d) {
-      document.getElementById('liveTitle').textContent = d.model || 'Keenetic';
+      const modelFull = (d.model || '').trim() || 'Keenetic';
+      document.getElementById('liveTitle').textContent = d.hostname || 'Keenetic';
+      document.getElementById('liveModelBadge').textContent = modelFull;
       document.getElementById('liveSubtitle').textContent =
         `${d.hostname || '—'} · ${d.isp || '—'} · WAN ${d.wan || '—'} · Firmware ${d.firmware || '—'}`;
       document.getElementById('liveKzlpVer').textContent = `KZLP v${d.kzlp_version || '—'}`;

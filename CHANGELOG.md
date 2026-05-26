@@ -2,6 +2,16 @@
 
 Tüm önemli değişiklikler [Semantic Versioning](https://semver.org/) ile sürümlenir.
 
+## [1.1.3] - 2026-05-26
+
+### Düzeltildi
+- Router modeli: `description` alanı öncelikli; `KN-1012` → `N-1012` normalizasyonu
+- `settings.json` içinde `router_model` ile sabit model adı (Hero N-1012)
+- Busybox uyumlu `ndmc` ANSI temizliği
+
+### Değiştirildi
+- Canlı panelde model adı ayrı rozet olarak gösterilir
+
 ## [1.1.2] - 2026-05-26
 
 ### Düzeltildi

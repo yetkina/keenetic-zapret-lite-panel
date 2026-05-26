@@ -69,9 +69,9 @@ detect_wan_iface() {
   echo "$wan"
 }
 
-# ndmc ciktisindan yalnizca ANSI kodlarini kaldir (tr -d K kullanmayin — Keenetic bozulur)
+# ndmc ANSI temizligi (tr -d K veya []K KULLANMAYIN — Keenetic / KN-1012 bozulur)
 ndmc_clean() {
-  sed 's/\x1b\[[0-9;?]*[a-zA-Z]//g;s/\r//g'
+  tr -d '\033' | sed 's/\[[0-9;?]*[a-zA-Z]//g;s/\r//g'
 }
 
 ndmc_version_out() {
@@ -84,35 +84,49 @@ ndmc_system_out() {
   LD_LIBRARY_PATH= ndmc -c 'show system' 2>/dev/null | ndmc_clean
 }
 
+# KN-1012 -> N-1012 (Keenetic urun adlandirmasi)
+normalize_model_name() {
+  _s="$1"
+  [ -z "$_s" ] && return 0
+  echo "$_s" | sed 's/^eenetic/Keenetic/;s/KN-/N-/g;s/(KN-/(N-/g'
+}
+
 detect_keenetic_model() {
+  if [ -f "$KZLP_DIR/settings.json" ]; then
+    _override=$(grep '"router_model"' "$KZLP_DIR/settings.json" 2>/dev/null | sed 's/.*: *"\([^"]*\)".*/\1/')
+    [ -n "$_override" ] && echo "$(normalize_model_name "$_override")" && return 0
+  fi
+
   m=""
   _out=$(ndmc_version_out)
   if [ -n "$_out" ]; then
+    _desc=$(echo "$_out" | awk -F': ' '/^[[:space:]]*description:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
     _model=$(echo "$_out" | awk -F': ' '/^[[:space:]]*model:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
     _hw=$(echo "$_out" | awk -F': ' '/^[[:space:]]*hw_id:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
     _dev=$(echo "$_out" | awk -F': ' '/^[[:space:]]*device:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
-    if [ -n "$_model" ]; then
-      m="Keenetic $_model"
+    if [ -n "$_desc" ]; then
+      m=$(normalize_model_name "$_desc")
+      case "$m" in Keenetic*) ;; *) m="Keenetic $m" ;; esac
     elif [ -n "$_dev" ] && [ -n "$_hw" ]; then
-      m="Keenetic $_dev ($_hw)"
-    else
-      _desc=$(echo "$_out" | awk -F': ' '/^[[:space:]]*description:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
-      if [ -n "$_desc" ]; then
-        m=$(echo "$_desc" | sed 's/^eenetic/Keenetic/')
-        case "$m" in Keenetic*) ;; *) m="Keenetic $m" ;; esac
-      fi
+      _hwd=$(echo "$_hw" | sed 's/^KN-/N-/')
+      m="Keenetic $_dev ($_hwd)"
+    elif [ -n "$_model" ]; then
+      m=$(normalize_model_name "Keenetic $_model")
     fi
   fi
-  [ -z "$m" ] && m=$(cat /proc/device-tree/model 2>/dev/null | tr -d '\0')
-  case "$m" in
-    *KN-1012*|*"N-1012"*) m="Keenetic Hero (N-1012)" ;;
-    *KN-1810*) m="Keenetic Giant (KN-1810)" ;;
-    *KN-2610*) m="Keenetic Peak (KN-2610)" ;;
-    *KN-3410*) m="Keenetic Hopper (KN-3410)" ;;
-    *KN-3510*) m="Keenetic Hopper SE (KN-3510)" ;;
-  esac
+  if [ -z "$m" ]; then
+    _dt=$(cat /proc/device-tree/model 2>/dev/null | tr -d '\0')
+    case "$_dt" in
+      *KN-1012*|*N-1012*|*1012*) m="Keenetic Hero (N-1012)" ;;
+      *KN-1810*) m="Keenetic Giant (N-1810)" ;;
+      *KN-2610*) m="Keenetic Peak (N-2610)" ;;
+      *KN-3410*) m="Keenetic Hopper (N-3410)" ;;
+      *KN-3510*) m="Keenetic Hopper SE (N-3510)" ;;
+      *) [ -n "$_dt" ] && m=$(normalize_model_name "$_dt") ;;
+    esac
+  fi
   [ -z "$m" ] && m="Keenetic"
-  echo "$m"
+  echo "$m" | sed 's/  */ /g'
 }
 
 detect_isp_id() {
