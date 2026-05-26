@@ -2,6 +2,13 @@
 
 Tüm önemli değişiklikler [Semantic Versioning](https://semver.org/) ile sürümlenir.
 
+
+## [1.1.7] - 2026-05-26
+
+### Düzeltildi
+- Kaydırma sırasında sol yan menü sabit kalır; yalnızca ana içerik alanı (`.main`) kayar
+- Mobilde üst menü yapışkan (sticky) kalır, sayfa düzeni bozulmaz
+
 ## [1.1.6] - 2026-05-26
 
 ### Eklendi
