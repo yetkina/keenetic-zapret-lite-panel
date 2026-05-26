@@ -2,6 +2,11 @@
 
 Tüm önemli değişiklikler [Semantic Versioning](https://semver.org/) ile sürümlenir.
 
+## [1.1.4] - 2026-05-26
+
+### Düzeltildi
+- Model kodu **KN-1012** olarak gösterilir (yanlışlıkla N-1012'ye çevrilmiyordu)
+
 ## [1.1.3] - 2026-05-26
 
 ### Düzeltildi

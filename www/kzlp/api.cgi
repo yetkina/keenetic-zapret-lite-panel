@@ -84,11 +84,11 @@ ndmc_system_out() {
   LD_LIBRARY_PATH= ndmc -c 'show system' 2>/dev/null | ndmc_clean
 }
 
-# KN-1012 -> N-1012 (Keenetic urun adlandirmasi)
+# ndmc bazen "eenetic" yazar (ANSI/tr hatasi); KN-1012 oldugu gibi kalir
 normalize_model_name() {
   _s="$1"
   [ -z "$_s" ] && return 0
-  echo "$_s" | sed 's/^eenetic/Keenetic/;s/KN-/N-/g;s/(KN-/(N-/g'
+  echo "$_s" | sed 's/^eenetic/Keenetic/'
 }
 
 detect_keenetic_model() {
@@ -108,8 +108,7 @@ detect_keenetic_model() {
       m=$(normalize_model_name "$_desc")
       case "$m" in Keenetic*) ;; *) m="Keenetic $m" ;; esac
     elif [ -n "$_dev" ] && [ -n "$_hw" ]; then
-      _hwd=$(echo "$_hw" | sed 's/^KN-/N-/')
-      m="Keenetic $_dev ($_hwd)"
+      m="Keenetic $_dev ($_hw)"
     elif [ -n "$_model" ]; then
       m=$(normalize_model_name "Keenetic $_model")
     fi
@@ -117,11 +116,11 @@ detect_keenetic_model() {
   if [ -z "$m" ]; then
     _dt=$(cat /proc/device-tree/model 2>/dev/null | tr -d '\0')
     case "$_dt" in
-      *KN-1012*|*N-1012*|*1012*) m="Keenetic Hero (N-1012)" ;;
-      *KN-1810*) m="Keenetic Giant (N-1810)" ;;
-      *KN-2610*) m="Keenetic Peak (N-2610)" ;;
-      *KN-3410*) m="Keenetic Hopper (N-3410)" ;;
-      *KN-3510*) m="Keenetic Hopper SE (N-3510)" ;;
+      *KN-1012*|*1012*) m="Keenetic Hero (KN-1012)" ;;
+      *KN-1810*) m="Keenetic Giant (KN-1810)" ;;
+      *KN-2610*) m="Keenetic Peak (KN-2610)" ;;
+      *KN-3410*) m="Keenetic Hopper (KN-3410)" ;;
+      *KN-3510*) m="Keenetic Hopper SE (KN-3510)" ;;
       *) [ -n "$_dt" ] && m=$(normalize_model_name "$_dt") ;;
     esac
   fi
