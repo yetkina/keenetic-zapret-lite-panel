@@ -2,6 +2,12 @@
 
 Tüm önemli değişiklikler [Semantic Versioning](https://semver.org/) ile sürümlenir.
 
+## [1.1.5] - 2026-05-26
+
+### Düzeltildi
+- CPU sıcaklığı: ham `thermal_zone0` (~65 °C) yerine Keenetic web paneli ile uyumlu gövde sıcaklığı (~45 °C, varsayılan 20 °C offset)
+- İsteğe bağlı: `cpu_temp_source` (`keenetic`, `raw`, `ndmc_min`) ve `cpu_temp_offset_c` ayarları
+
 ## [1.1.4] - 2026-05-26
 
 ### Düzeltildi

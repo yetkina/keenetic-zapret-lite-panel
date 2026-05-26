@@ -606,7 +606,7 @@
       tempTile.className = 'tile';
       tempTile.innerHTML = `<h3>Sıcaklık / servisler</h3>
         <div class="big">${d.cpu_temp_c != null ? d.cpu_temp_c + ' °C' : '—'}</div>
-        <div class="subt">KZLP ${d.kzlp_version || '—'} · ${fmtUptime(d.uptime_sec)}</div>
+        <div class="subt">Gövde sıcaklığı (Keenetic paneli ile uyumlu) · KZLP ${d.kzlp_version || '—'}</div>
         <div class="svc-row">
           <span class="svc ${d.zapret_running ? 'on' : 'off'}">Zapret</span>
           <span class="svc ${d.lighttpd ? 'on' : 'off'}">KZLP</span>

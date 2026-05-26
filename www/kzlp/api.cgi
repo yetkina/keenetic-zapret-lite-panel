@@ -202,6 +202,50 @@ detect_lan_ip() {
   ip -4 addr show br0 2>/dev/null | awk '/inet /{print $2; exit}' | cut -d/ -f1
 }
 
+# settings.json: sayi veya metin (cpu_temp_source, cpu_temp_offset_c)
+kzlp_setting() {
+  _key="$1"
+  _def="$2"
+  _val=""
+  if [ -f "$KZLP_DIR/settings.json" ]; then
+    _val=$(grep "\"$_key\"" "$KZLP_DIR/settings.json" 2>/dev/null | sed -n 's/.*: *"\([^"]*\)".*/\1/p' | head -1)
+    [ -z "$_val" ] && _val=$(grep "\"$_key\"" "$KZLP_DIR/settings.json" 2>/dev/null | sed -n 's/.*: *\([-0-9.][0-9.]*\).*/\1/p' | head -1)
+  fi
+  [ -n "$_val" ] && echo "$_val" || echo "$_def"
+}
+
+# ndmc show interface — WiFi/SFP modul sicakliklari
+ndmc_interface_temps_c() {
+  [ -x /bin/ndmc ] || return 0
+  LD_LIBRARY_PATH= ndmc -c 'show interface' 2>/dev/null | ndmc_clean | \
+    awk '/temperature:/{v=$0; sub(/.*temperature:[[:space:]]*/,"",v); sub(/[^0-9.].*$/,"",v); if(v+0>0 && v+0<120) print v+0}'
+}
+
+# Keenetic web paneli ~45 C, sysfs cpu-thermal ham ~65 C (yaklasik 20 C offset)
+detect_cpu_temp_c() {
+  _src=$(kzlp_setting cpu_temp_source keenetic)
+  _off=$(kzlp_setting cpu_temp_offset_c 20)
+
+  case "$_src" in
+    raw)
+      if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
+        _t=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
+        [ -n "$_t" ] && awk -v t="$_t" 'BEGIN{ if(t+0>0) printf "%.0f", t/1000 }'
+      fi
+      ;;
+    ndmc|ndmc_min)
+      _min=$(ndmc_interface_temps_c | awk 'BEGIN{m=0} {if(m==0||$1<m)m=$1} END{if(m>0) printf "%.0f", m}')
+      [ -n "$_min" ] && echo "$_min"
+      ;;
+    keenetic|sysfs_offset|auto|*)
+      if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
+        _t=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
+        [ -n "$_t" ] && awk -v t="$_t" -v off="$_off" 'BEGIN{ if(t+0>0) printf "%.0f", t/1000-off }'
+      fi
+      ;;
+  esac
+}
+
 system_stats() {
   _load1="0"; _load5="0"; _load15="0"
   read -r _load1 _load5 _load15 _ _ < /proc/loadavg 2>/dev/null
@@ -227,11 +271,7 @@ system_stats() {
     _disk_used=$(echo "$_df" | awk '{print $3}')
     _disk_pct=$(echo "$_df" | awk '{gsub(/%/,"",$5); print $5}')
   fi
-  _cpu_temp=""
-  if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
-    _t=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
-    [ -n "$_t" ] && _cpu_temp=$((_t / 1000))
-  fi
+  _cpu_temp=$(detect_cpu_temp_c)
   echo "${_load1}|${_load5}|${_load15}|${_mem_used}|${_mem_total}|${_uptime}|${_disk_pct}|${_disk_used}|${_disk_total}|${_cpu_temp}"
 }
 
