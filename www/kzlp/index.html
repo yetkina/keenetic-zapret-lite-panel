@@ -240,21 +240,123 @@
     .req-check.bad { background: rgba(239,68,68,0.15); color: var(--bad); border: 1px solid var(--bad); }
     .req-label { flex: 1; }
     .req-label small { display: block; color: var(--muted); font-size: 0.75rem; margin-top: 0.15rem; }
+    .wrap-wide { max-width: 1060px; }
+    .live-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      padding: 1rem 1.15rem;
+      background: linear-gradient(135deg, #1a2a3d 0%, #15202c 100%);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+    .live-top h1 { margin: 0; font-size: 1.2rem; }
+    .live-meta { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    .pill {
+      font-size: 0.75rem;
+      padding: 0.3rem 0.65rem;
+      border-radius: 6px;
+      background: rgba(15,20,25,0.6);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .pill strong { color: var(--text); font-weight: 600; }
+    .live-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 0.85rem;
+      margin-bottom: 1rem;
+    }
+    .tile {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+    .tile h3 {
+      margin: 0 0 0.65rem;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .tile .big {
+      font-size: 1.5rem;
+      font-weight: 700;
+      line-height: 1.2;
+    }
+    .tile .subt { font-size: 0.8rem; color: var(--muted); margin-top: 0.35rem; }
+    .meter {
+      height: 8px;
+      background: var(--bg);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+    .meter > span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, #14b8a6, #3b82f6);
+      border-radius: 99px;
+      transition: width 0.4s ease;
+    }
+    .svc-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+    .svc {
+      font-size: 0.72rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    .svc.on { color: var(--ok); border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.08); }
+    .svc.off { color: var(--muted); }
+    .facts {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.5rem 1.25rem;
+      font-size: 0.88rem;
+    }
+    .facts dt { color: var(--muted); margin: 0; }
+    .facts dd { margin: 0.15rem 0 0.65rem; font-weight: 500; }
+    .live-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.65rem; }
+    .live-actions button { padding: 0.35rem 0.7rem; font-size: 0.8rem; }
   </style>
 </head>
 <body>
   <div class="app">
     <aside class="sidebar">
       <div class="brand"><strong>KZLP</strong> Keenetic Zapret</div>
-      <button type="button" class="nav-item active" data-page="dashboard">Panel</button>
+      <button type="button" class="nav-item active" data-page="live">Panel (Canlı)</button>
+      <button type="button" class="nav-item" data-page="dashboard">Zapret</button>
       <button type="button" class="nav-item" data-page="install" id="navInstall">Zapret Kurulum</button>
     </aside>
     <div class="main">
-  <div id="page-dashboard" class="page active wrap">
+  <div id="page-live" class="page active wrap wrap-wide">
+    <div class="live-top">
+      <div>
+        <h1 id="liveTitle">—</h1>
+        <p class="sub" id="liveSubtitle">Canlı özet · otomatik yenileme 15 sn</p>
+      </div>
+      <div class="live-meta">
+        <span class="pill" id="liveClock">—</span>
+        <button type="button" id="btnLiveRefresh">Yenile</button>
+      </div>
+    </div>
+    <div class="live-grid" id="liveTiles"></div>
+    <section>
+      <h2>Sistem özeti</h2>
+      <dl class="facts" id="liveFacts"></dl>
+    </section>
+  </div>
+
+  <div id="page-dashboard" class="page wrap">
     <header>
       <div>
-        <h1>Keenetic Zapret Lite Panel</h1>
-        <p class="sub">Keenetic <strong>Zapret</strong> politikası · yalnızca politikalı cihazlar</p>
+        <h1>Zapret</h1>
+        <p class="sub">Politika, siteler, güncelleme ve yedekleme</p>
       </div>
       <div id="statusBadge" class="badge off"><span class="dot"></span><span id="statusText">Yükleniyor…</span></div>
     </header>
@@ -388,6 +490,24 @@
     let latestTag = null;
     let installInfo = null;
     let installPoll = null;
+    let livePoll = null;
+
+    const fmtKb = n => {
+      const v = Number(n) || 0;
+      if (v >= 1048576) return (v / 1048576).toFixed(1) + ' GB';
+      if (v >= 1024) return Math.round(v / 1024) + ' MB';
+      return v + ' KB';
+    };
+
+    const fmtUptime = s => {
+      const u = Number(s) || 0;
+      const d = Math.floor(u / 86400);
+      const h = Math.floor((u % 86400) / 3600);
+      const m = Math.floor((u % 3600) / 60);
+      if (d > 0) return `${d}g ${h}s`;
+      if (h > 0) return `${h}s ${m}dk`;
+      return `${m} dk`;
+    };
 
     function showPage(name) {
       document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -396,8 +516,88 @@
       if (page) page.classList.add('active');
       const nav = document.querySelector(`.nav-item[data-page="${name}"]`);
       if (nav) nav.classList.add('active');
-      location.hash = name === 'dashboard' ? '' : name;
+      const hashMap = { live: '', dashboard: 'zapret', install: 'install' };
+      location.hash = hashMap[name] || name;
+      if (name === 'live') refreshLive();
+      else if (livePoll) { clearInterval(livePoll); livePoll = null; }
     }
+
+    function renderLive(d) {
+      document.getElementById('liveTitle').textContent = d.model || 'Keenetic';
+      document.getElementById('liveSubtitle').textContent =
+        `${d.hostname || '—'} · ${d.isp || '—'} · WAN ${d.wan || '—'}`;
+      const zapCls = d.zapret_running ? 'on' : 'off';
+      const zapTxt = d.zapret_running ? 'Çalışıyor' : (d.zapret_installed ? 'Durdu' : 'Kurulu değil');
+      const tiles = [
+        { t: 'Zapret', v: zapTxt, s: `Sürüm ${d.zapret_version || '—'}`, actions: true },
+        { t: 'CPU yükü', v: d.load1, s: `1 / 5 / 15 dk: ${d.load1} · ${d.load5} · ${d.load15}` },
+        { t: 'Bellek', v: `${d.ram_pct}%`, s: `${fmtKb(d.ram_used_kb)} / ${fmtKb(d.ram_total_kb)}`, meter: d.ram_pct },
+        { t: 'USB depolama (/opt)', v: `${d.disk_pct}%`, s: `${fmtKb(d.disk_used_kb)} / ${fmtKb(d.disk_total_kb)}`, meter: d.disk_pct },
+        { t: 'Politika', v: d.policy_devices, s: 'Zapret kuralındaki cihaz sayısı' },
+        { t: 'Öğrenilen domain', v: d.learned_domains, s: 'Otomatik hostlist' }
+      ];
+      const grid = document.getElementById('liveTiles');
+      grid.innerHTML = '';
+      tiles.forEach(tile => {
+        const el = document.createElement('div');
+        el.className = 'tile';
+        let html = `<h3>${tile.t}</h3><div class="big">${tile.v}</div><div class="subt">${tile.s}</div>`;
+        if (tile.meter != null) {
+          html += `<div class="meter"><span style="width:${Math.min(100, tile.meter)}%"></span></div>`;
+        }
+        if (tile.actions) {
+          html += `<div class="live-actions">
+            <button type="button" data-live-cmd="start">Başlat</button>
+            <button type="button" data-live-cmd="stop" class="danger">Durdur</button>
+            <button type="button" data-live-cmd="restart" class="primary">Yeniden başlat</button>
+          </div>`;
+        }
+        el.innerHTML = html;
+        grid.appendChild(el);
+      });
+      const tempTile = document.createElement('div');
+      tempTile.className = 'tile';
+      tempTile.innerHTML = `<h3>Sıcaklık / servisler</h3>
+        <div class="big">${d.cpu_temp_c != null ? d.cpu_temp_c + ' °C' : '—'}</div>
+        <div class="subt">Çalışma süresi: ${fmtUptime(d.uptime_sec)}</div>
+        <div class="svc-row">
+          <span class="svc ${d.zapret_running ? 'on' : 'off'}">Zapret</span>
+          <span class="svc ${d.lighttpd ? 'on' : 'off'}">KZLP</span>
+        </div>`;
+      grid.appendChild(tempTile);
+
+      const facts = document.getElementById('liveFacts');
+      const rows = [
+        ['Model', d.model],
+        ['Firmware', d.firmware],
+        ['WAN', d.wan],
+        ['LAN IP', d.lan_ip],
+        ['ISS', d.isp],
+        ['Hostname', d.hostname]
+      ];
+      facts.innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v || '—'}</dd>`).join('');
+
+      grid.querySelectorAll('[data-live-cmd]').forEach(btn => {
+        btn.onclick = async () => {
+          btn.disabled = true;
+          const j = await api('control', { cmd: btn.dataset.liveCmd });
+          btn.disabled = false;
+          if (j.ok) { toast('Tamam'); refreshLive(); refreshStatus(); }
+          else toast(j.error, true);
+        };
+      });
+    }
+
+    async function refreshLive() {
+      const j = await api('dashboard_live');
+      if (!j.ok) { toast(j.error, true); return; }
+      renderLive(j.data);
+      const now = new Date();
+      document.getElementById('liveClock').innerHTML =
+        `<strong>${now.toLocaleTimeString('tr-TR')}</strong>`;
+    }
+
+    document.getElementById('btnLiveRefresh').onclick = () => refreshLive();
 
     document.querySelectorAll('.nav-item').forEach(btn => {
       btn.addEventListener('click', () => showPage(btn.dataset.page));
@@ -721,15 +921,23 @@
     (async () => {
       try {
         const info = await loadInstallInfo();
-        if (location.hash === '#install' || !info.zapret_installed) {
+        const hash = location.hash.replace('#', '');
+        if (hash === 'install' || !info.zapret_installed) {
           showPage('install');
-        } else {
+        } else if (hash === 'zapret') {
           showPage('dashboard');
+        } else {
+          showPage('live');
         }
         updateInstallButton(info);
         if (info.install_status === 'running') {
           installPoll = setInterval(pollInstallStatus, 2000);
           pollInstallStatus();
+        }
+        if (!livePoll) {
+          livePoll = setInterval(() => {
+            if (document.getElementById('page-live').classList.contains('active')) refreshLive();
+          }, 15000);
         }
         await refreshStatus();
         await loadSites();
@@ -737,7 +945,9 @@
       } catch (e) {
         toast('API hatası: ' + e.message, true);
       }
-      setInterval(refreshStatus, 30000);
+      setInterval(() => {
+        if (document.getElementById('page-dashboard').classList.contains('active')) refreshStatus();
+      }, 30000);
     })();
   </script>
 </body>

@@ -123,6 +123,73 @@ valid_isp_id() {
   return 1
 }
 
+isp_id_to_name() {
+  case "$1" in
+    kablonet) echo "Kablonet (Turksat)" ;;
+    kablofiber) echo "Kablonet Fiber" ;;
+    turksat) echo "Turksat Kablo" ;;
+    turktelekom|ttnet) echo "Turk Telekom" ;;
+    superonline|sol) echo "Superonline" ;;
+    turknet) echo "TurkNet" ;;
+    vodafone) echo "Vodafone" ;;
+    *) echo "Genel profil" ;;
+  esac
+}
+
+detect_firmware() {
+  fw=""
+  if [ -x /bin/ndmc ]; then
+    fw=$(LD_LIBRARY_PATH= ndmc -c 'show version' 2>/dev/null | tr -d '\r\033[]K' \
+      | awk -F': ' '/^[[:space:]]*title:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
+  fi
+  [ -z "$fw" ] && fw="—"
+  echo "$fw"
+}
+
+detect_hostname() {
+  h=$(LD_LIBRARY_PATH= ndmc -c 'show system' 2>/dev/null | tr -d '\r\033[]K' \
+    | awk -F': ' '/^[[:space:]]*hostname:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
+  [ -z "$h" ] && h=$(hostname 2>/dev/null)
+  echo "$h"
+}
+
+detect_lan_ip() {
+  ip -4 addr show br0 2>/dev/null | awk '/inet /{print $2; exit}' | cut -d/ -f1
+}
+
+system_stats() {
+  _load1="0"; _load5="0"; _load15="0"
+  read -r _load1 _load5 _load15 _ _ < /proc/loadavg 2>/dev/null
+  _mem_used=0; _mem_total=0
+  if [ -x /bin/ndmc ]; then
+    _memline=$(LD_LIBRARY_PATH= ndmc -c 'show system' 2>/dev/null | tr -d '\r\033[]K' \
+      | awk -F': ' '/^[[:space:]]*memory:/{gsub(/^[[:space:]]+/,"",$2); print $2; exit}')
+    _mem_used=$(echo "$_memline" | cut -d/ -f1)
+    _mem_total=$(echo "$_memline" | cut -d/ -f2)
+  fi
+  [ -z "$_mem_total" ] || [ "$_mem_total" -eq 0 ] && {
+    _mem_total=$(awk '/^MemTotal:/{print $2}' /proc/meminfo 2>/dev/null)
+    _mem_free=$(awk '/^MemAvailable:/{print $2}' /proc/meminfo 2>/dev/null)
+    [ -z "$_mem_free" ] && _mem_free=$(awk '/^MemFree:/{print $2}' /proc/meminfo 2>/dev/null)
+    _mem_used=$((_mem_total - _mem_free))
+  }
+  _uptime=0
+  _uptime=$(awk '{print int($1)}' /proc/uptime 2>/dev/null)
+  _disk_pct=0; _disk_used=""; _disk_total=""
+  _df=$(df -k /opt 2>/dev/null | tail -1)
+  if [ -n "$_df" ]; then
+    _disk_total=$(echo "$_df" | awk '{print $2}')
+    _disk_used=$(echo "$_df" | awk '{print $3}')
+    _disk_pct=$(echo "$_df" | awk '{gsub(/%/,"",$5); print $5}')
+  fi
+  _cpu_temp=""
+  if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
+    _t=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
+    [ -n "$_t" ] && _cpu_temp=$((_t / 1000))
+  fi
+  echo "${_load1}|${_load5}|${_load15}|${_mem_used}|${_mem_total}|${_uptime}|${_disk_pct}|${_disk_used}|${_disk_total}|${_cpu_temp}"
+}
+
 # Gereksinim kontrolleri
 REQ_SH="$KZLP_DIR/requirements.sh"
 if [ -f "$REQ_SH" ]; then
@@ -276,6 +343,37 @@ case "$ACTION" in
     fi
     ver=$(installed_version)
     json_ok "{\"running\":$running,\"zapret_installed\":$zinst,\"installed_version\":\"$ver\",\"policy_mode\":true,\"policy_mark\":\"$POLICY_MARK\",\"policy_users\":$users,\"exceptions_count\":$exc,\"wan\":\"$wan\"}"
+    ;;
+  dashboard_live)
+    running=false
+    zapret_running && running=true
+    zinst=false
+    zapret_installed && zinst=true
+    wan=$(grep '^IFACE_WAN=' "$ZAPRET/config" 2>/dev/null | tail -1 | sed 's/^IFACE_WAN=//;s/"//g' | tr -d '\r\n')
+    [ -z "$wan" ] && wan=$(detect_wan_iface)
+    _isp=$(detect_isp_id)
+    _ispn=$(isp_id_to_name "$_isp")
+    IFS='|' read -r _l1 _l5 _l15 _mu _mt _up _dp _du _dt _ct <<EOF
+$(system_stats)
+EOF
+    _policy_n=0
+    _policy_n=$(iptables -t mangle -S "$POLICY_CHAIN" 2>/dev/null | grep -i ffffaaa | grep -ci mac)
+    _learned=0
+    [ -f "$AUTO_HOSTS" ] && _learned=$(grep -vE '^#|^$' "$AUTO_HOSTS" 2>/dev/null | wc -l | tr -d ' ')
+    _lt=false
+    pgrep lighttpd >/dev/null 2>&1 && _lt=true
+    _ram_pct=0
+    [ -n "$_mt" ] && [ "$_mt" -gt 0 ] && _ram_pct=$((_mu * 100 / _mt))
+    model=$(json_escape "$(detect_keenetic_model)")
+    fw=$(json_escape "$(detect_firmware)")
+    host=$(json_escape "$(detect_hostname)")
+    wan_e=$(json_escape "$wan")
+    lan=$(json_escape "$(detect_lan_ip)")
+    isp_e=$(json_escape "$_ispn")
+    ver=$(installed_version)
+    _ct_json="null"
+    [ -n "$_ct" ] && _ct_json="$_ct"
+    json_ok "{\"hostname\":\"$host\",\"model\":\"$model\",\"firmware\":\"$fw\",\"wan\":\"$wan_e\",\"lan_ip\":\"$lan\",\"isp\":\"$isp_e\",\"zapret_installed\":$zinst,\"zapret_running\":$running,\"zapret_version\":\"$ver\",\"policy_devices\":$_policy_n,\"learned_domains\":$_learned,\"lighttpd\":$_lt,\"load1\":\"$_l1\",\"load5\":\"$_l5\",\"load15\":\"$_l15\",\"ram_used_kb\":${_mu:-0},\"ram_total_kb\":${_mt:-0},\"ram_pct\":$_ram_pct,\"disk_pct\":${_dp:-0},\"disk_used_kb\":${_du:-0},\"disk_total_kb\":${_dt:-0},\"uptime_sec\":${_up:-0},\"cpu_temp_c\":$_ct_json}"
     ;;
   install_info)
     zinst=false
