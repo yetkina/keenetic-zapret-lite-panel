@@ -98,13 +98,13 @@ requirements_mandatory_ok() {
 
 # Eski panelleri routerdan kaldir (KZM2, nfqws-web, zapret2 servisleri)
 kzlp_remove_legacy_panels() {
-  /opt/etc/init.d/S90-zapret2 stop 2>/dev/null
-  /opt/etc/init.d/S51nfqws2 stop 2>/dev/null
-  killall nfqws2 2>/dev/null
-  chmod -x /opt/etc/init.d/S90-zapret2 2>/dev/null
-  chmod -x /opt/etc/init.d/S51nfqws2 2>/dev/null
-  rm -rf /opt/www/kzm2 /opt/www/nfqws-keenetic-web /opt/www/nfqws-web 2>/dev/null
-  rm -f /opt/etc/init.d/S90-zapret2 /opt/etc/init.d/S51nfqws2 2>/dev/null
-  rm -f /opt/etc/init.d/S51nfqws2.bak.* 2>/dev/null
+  [ -x /opt/etc/init.d/S90-zapret2 ] && /opt/etc/init.d/S90-zapret2 stop 2>/dev/null || true
+  [ -x /opt/etc/init.d/S51nfqws2 ] && /opt/etc/init.d/S51nfqws2 stop 2>/dev/null || true
+  killall nfqws2 2>/dev/null || true
+  chmod -x /opt/etc/init.d/S90-zapret2 2>/dev/null || true
+  chmod -x /opt/etc/init.d/S51nfqws2 2>/dev/null || true
+  rm -rf /opt/www/kzm2 /opt/www/nfqws-keenetic-web /opt/www/nfqws-web 2>/dev/null || true
+  rm -f /opt/etc/init.d/S90-zapret2 /opt/etc/init.d/S51nfqws2 2>/dev/null || true
+  rm -f /opt/etc/init.d/S51nfqws2.bak.* 2>/dev/null || true
   return 0
 }

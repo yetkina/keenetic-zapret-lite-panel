@@ -76,7 +76,9 @@ if [ -f "$REPO_ROOT/scripts/zapret-install.sh" ]; then
   cp -f "$REPO_ROOT/scripts/"*.sh /opt/etc/kzlp/
   chmod +x /opt/etc/kzlp/*.sh 2>/dev/null
   cp -f "$REPO_ROOT/CHANGELOG.md" "$REPO_ROOT/VERSION" /opt/etc/kzlp/
-  if [ ! -f /opt/etc/kzlp/kzlp.version ]; then
+  if [ -f "$REPO_ROOT/VERSION" ]; then
+    cp -f "$REPO_ROOT/VERSION" /opt/etc/kzlp/kzlp.version
+  elif [ -f "$REPO_ROOT/etc/kzlp/kzlp.version" ]; then
     cp -f "$REPO_ROOT/etc/kzlp/kzlp.version" /opt/etc/kzlp/kzlp.version
   fi
   [ -f /opt/etc/kzlp/installed.version ] && [ ! -f /opt/etc/kzlp/zapret.version ] && \

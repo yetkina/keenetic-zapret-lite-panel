@@ -5,6 +5,11 @@ export PATH="/opt/sbin:/opt/bin:/opt/usr/sbin:/opt/usr/bin:/sbin:/bin"
 KZLP_DIR="/opt/etc/kzlp"
 KZLP_VERSION_FILE="$KZLP_DIR/kzlp.version"
 ZAPRET_VERSION_FILE="$KZLP_DIR/zapret.version"
+DNS_MANAGED_FILE="$KZLP_DIR/dns.managed"
+DNS_PRESET_FILE="$KZLP_DIR/dns.preset"
+DNS_PROFILE_FILE="$KZLP_DIR/dns.profile"
+DNS_PROFILE_DESC="Zapret DNS"
+DNS_PROFILE_DEFAULT_ID="kzlpzapret"
 ZAPRET="/opt/zapret"
 INIT="/opt/etc/init.d/S90-zapret"
 EXCLUDE="$ZAPRET/ipset/zapret-hosts-user-exclude.txt"
@@ -474,6 +479,252 @@ urldecode() {
   printf '%b' "$(echo "$1" | sed 's/+/ /g; s/%\([0-9A-Fa-f][0-9A-Fa-f]\)/\\x\1/g')"
 }
 
+# Keenetic DNS — Sistem profili + dns-proxy filter profilleri
+ndmc_cmd() {
+  [ -x /bin/ndmc ] || return 1
+  LD_LIBRARY_PATH= ndmc -c "$1" 2>/dev/null | ndmc_clean
+}
+
+ndmc_raw() {
+  [ -x /bin/ndmc ] || return 1
+  LD_LIBRARY_PATH= ndmc -c "$1" >/dev/null 2>&1
+}
+
+is_ipv4() {
+  echo "$1" | grep -qE '^([0-9]{1,3}\.){3}[0-9]{1,3}$' || return 1
+  _a=$(echo "$1" | cut -d. -f1)
+  _b=$(echo "$1" | cut -d. -f2)
+  _c=$(echo "$1" | cut -d. -f3)
+  _d=$(echo "$1" | cut -d. -f4)
+  [ "$_a" -le 255 ] 2>/dev/null && [ "$_b" -le 255 ] 2>/dev/null \
+    && [ "$_c" -le 255 ] 2>/dev/null && [ "$_d" -le 255 ] 2>/dev/null
+}
+
+dns_ips_to_json() {
+  _first=1
+  printf '['
+  while IFS= read -r _ip || [ -n "$_ip" ]; do
+    [ -z "$_ip" ] && continue
+    [ "$_first" -eq 0 ] && printf ','
+    _first=0
+    printf '"%s"' "$(json_escape "$_ip")"
+  done
+  printf ']'
+}
+
+dns_running_config() {
+  ndmc_cmd 'show running-config' 2>/dev/null
+}
+
+# Sistem profili (ip name-server)
+dns_list_system() {
+  _out=$(ndmc_cmd 'show ip name-server' 2>/dev/null)
+  if [ -n "$_out" ]; then
+    echo "$_out" | awk '/^[[:space:]]*address:/{print $2}' | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$'
+    return 0
+  fi
+  dns_running_config | sed -n 's/^ip name-server[[:space:]]\+\([0-9.]\+\).*/\1/p' | \
+    grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$'
+}
+
+# id|description satirlari
+dns_profile_meta() {
+  _show=$(ndmc_cmd 'show dns-proxy filter profiles' 2>/dev/null)
+  if [ -n "$_show" ]; then
+    echo "$_show" | awk '
+      /^[[:space:]]*id:/{ id=$2; next }
+      /^[[:space:]]*description:/{
+        desc=$0; sub(/^[[:space:]]*description:[[:space:]]*/,"",desc)
+        if (id != "") print id "|" desc
+        id=""
+      }
+    '
+    return 0
+  fi
+  dns_running_config | sed -n 's/^[[:space:]]*filter profile \([^ ]*\) description "\(.*\)"/\1|\2/p'
+}
+
+dns_profile_servers() {
+  _pid="$1"
+  [ -n "$_pid" ] || return 0
+  dns_running_config | sed -n "s/^[[:space:]]*filter profile ${_pid} dns53 upstream \\([0-9.]\\+\\).*/\\1/p"
+}
+
+dns_list_managed() {
+  [ -f "$DNS_MANAGED_FILE" ] || return 0
+  grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' "$DNS_MANAGED_FILE" 2>/dev/null
+}
+
+dns_preset_get() {
+  [ -f "$DNS_PRESET_FILE" ] && tr -d '\r\n' < "$DNS_PRESET_FILE"
+}
+
+dns_preset_ips() {
+  case "$1" in
+    cloudflare) echo "1.1.1.1"; echo "1.0.0.1" ;;
+    google) echo "8.8.8.8"; echo "8.8.4.4" ;;
+    *) return 1 ;;
+  esac
+}
+
+dns_profile_id_get() {
+  [ -f "$DNS_PROFILE_FILE" ] && tr -d '\r\n' < "$DNS_PROFILE_FILE"
+}
+
+dns_save_config() {
+  ndmc_raw 'system configuration save'
+}
+
+dns_profiles_json() {
+  _first=1
+  printf '['
+  while IFS='|' read -r _id _desc || [ -n "$_id" ]; do
+    [ -z "$_id" ] && continue
+    _srv=$(dns_profile_servers "$_id" | dns_ips_to_json)
+    _id_e=$(json_escape "$_id")
+    _desc_e=$(json_escape "$_desc")
+    [ "$_first" -eq 0 ] && printf ','
+    _first=0
+    printf '{"id":"%s","description":"%s","servers":%s}' "$_id_e" "$_desc_e" "$_srv"
+  done <<EOF
+$(dns_profile_meta)
+EOF
+  printf ']'
+}
+
+# Zapret DNS profilini bul veya olustur; id yazdirir
+dns_ensure_target_profile() {
+  _want="$DNS_PROFILE_DESC"
+  _found=""
+  while IFS='|' read -r _id _desc || [ -n "$_id" ]; do
+    [ -z "$_id" ] && continue
+    if [ "$_desc" = "$_want" ]; then
+      _found="$_id"
+      break
+    fi
+  done <<EOF
+$(dns_profile_meta)
+EOF
+  if [ -z "$_found" ]; then
+    _saved=$(dns_profile_id_get)
+    if [ -n "$_saved" ]; then
+      while IFS='|' read -r _id _desc || [ -n "$_id" ]; do
+        [ "$_id" = "$_saved" ] && _found="$_saved" && break
+      done <<EOF
+$(dns_profile_meta)
+EOF
+    fi
+  fi
+  if [ -z "$_found" ]; then
+    _found="$DNS_PROFILE_DEFAULT_ID"
+    ndmc_raw "dns-proxy filter profile $_found" || return 1
+    ndmc_raw "dns-proxy filter profile $_found description \"$DNS_PROFILE_DESC\"" || true
+  fi
+  mkdir -p "$KZLP_DIR"
+  printf '%s' "$_found" > "$DNS_PROFILE_FILE"
+  printf '%s' "$_found"
+}
+
+dns_profile_remove_upstream() {
+  ndmc_raw "no dns-proxy filter profile $1 dns53 upstream $2" || true
+}
+
+dns_profile_add_upstream() {
+  ndmc_raw "dns-proxy filter profile $1 dns53 upstream $2"
+}
+
+dns_status_json() {
+  _sys=$(dns_list_system | dns_ips_to_json)
+  _profs=$(dns_profiles_json)
+  _man=$(dns_list_managed | dns_ips_to_json)
+  _pre=$(dns_preset_get)
+  [ -z "$_pre" ] && _pre=""
+  _pre_e=$(json_escape "$_pre")
+  _tid=$(dns_profile_id_get)
+  _tdesc=""
+  if [ -n "$_tid" ]; then
+    while IFS='|' read -r _id _desc || [ -n "$_id" ]; do
+      [ "$_id" = "$_tid" ] && _tdesc="$_desc" && break
+    done <<EOF
+$(dns_profile_meta)
+EOF
+  else
+    while IFS='|' read -r _id _desc || [ -n "$_id" ]; do
+      if [ "$_desc" = "$DNS_PROFILE_DESC" ]; then
+        _tid="$_id"
+        _tdesc="$_desc"
+        break
+      fi
+    done <<EOF
+$(dns_profile_meta)
+EOF
+  fi
+  _tid_e=$(json_escape "$_tid")
+  _tdesc_e=$(json_escape "$_tdesc")
+  _tsrv='[]'
+  [ -n "$_tid" ] && _tsrv=$(dns_profile_servers "$_tid" | dns_ips_to_json)
+  _ndmc=false
+  [ -x /bin/ndmc ] && _ndmc=true
+  printf '{"ndmc":%s,"system":%s,"profiles":%s,"target_id":"%s","target_description":"%s","target_servers":%s,"managed":%s,"preset":"%s"}' \
+    "$_ndmc" "$_sys" "$_profs" "$_tid_e" "$_tdesc_e" "$_tsrv" "$_man" "$_pre_e"
+}
+
+dns_apply_list() {
+  _preset="$1"
+  shift
+  mkdir -p "$KZLP_DIR"
+  _pid=$(dns_ensure_target_profile) || return 1
+  [ -n "$_pid" ] || return 1
+
+  # Profildeki mevcut dns53 upstreamleri temizle
+  while IFS= read -r _old || [ -n "$_old" ]; do
+    [ -z "$_old" ] && continue
+    dns_profile_remove_upstream "$_pid" "$_old"
+  done <<EOF
+$(dns_profile_servers "$_pid")
+EOF
+
+  : > "$DNS_MANAGED_FILE"
+  _added=0
+  for _ip in "$@"; do
+    [ -z "$_ip" ] && continue
+    is_ipv4 "$_ip" || continue
+    if dns_profile_add_upstream "$_pid" "$_ip"; then
+      echo "$_ip" >> "$DNS_MANAGED_FILE"
+      _added=$((_added + 1))
+    fi
+  done
+  [ "$_added" -gt 0 ] || {
+    rm -f "$DNS_MANAGED_FILE" "$DNS_PRESET_FILE"
+    return 1
+  }
+  printf '%s' "$_preset" > "$DNS_PRESET_FILE"
+  printf '%s' "$_pid" > "$DNS_PROFILE_FILE"
+  dns_save_config
+  return 0
+}
+
+dns_clear_target() {
+  _pid=$(dns_profile_id_get)
+  if [ -z "$_pid" ]; then
+    while IFS='|' read -r _id _desc || [ -n "$_id" ]; do
+      [ "$_desc" = "$DNS_PROFILE_DESC" ] && _pid="$_id" && break
+    done <<EOF
+$(dns_profile_meta)
+EOF
+  fi
+  [ -n "$_pid" ] || return 0
+  while IFS= read -r _old || [ -n "$_old" ]; do
+    [ -z "$_old" ] && continue
+    dns_profile_remove_upstream "$_pid" "$_old"
+  done <<EOF
+$(dns_profile_servers "$_pid")
+EOF
+  rm -f "$DNS_MANAGED_FILE" "$DNS_PRESET_FILE"
+  dns_save_config
+  return 0
+}
+
 case "$ACTION" in
   status)
     running=false
@@ -702,12 +953,55 @@ EOF
     body="$body]}"
     json_ok "$body"
     ;;
+  dns_status)
+    [ -x /bin/ndmc ] || json_err "ndmc yok — Keenetic DNS yazilamaz"
+    json_ok "$(dns_status_json)"
+    ;;
+  dns_apply)
+    [ -x /bin/ndmc ] || json_err "ndmc yok — Keenetic DNS yazilamaz"
+    _preset=$(urldecode "$(post_param preset)")
+    [ -z "$_preset" ] && _preset="custom"
+    case "$_preset" in
+      cloudflare|google|custom) ;;
+      *) json_err "Gecersiz onayar (cloudflare|google|custom)" ;;
+    esac
+    _ips=""
+    if [ "$_preset" = "custom" ]; then
+      _raw=$(urldecode "$(post_param servers)")
+      [ -z "$_raw" ] && json_err "Ozel DNS icin en az bir IP gerekli"
+      _ips=$(echo "$_raw" | tr ',;' '  ' | tr -s '[:space:]' ' ')
+    else
+      _ips=$(dns_preset_ips "$_preset" | tr '\n' ' ')
+    fi
+    _ok_ips=""
+    _n=0
+    for _ip in $_ips; do
+      is_ipv4 "$_ip" || json_err "Gecersiz IP: $_ip"
+      _ok_ips="$_ok_ips $_ip"
+      _n=$((_n + 1))
+    done
+    [ "$_n" -gt 0 ] || json_err "Gecerli DNS IP yok"
+    # shellcheck disable=SC2086
+    dns_apply_list "$_preset" $_ok_ips || json_err "DNS yazilamadi (ndmc)"
+    json_ok "$(dns_status_json)"
+    ;;
+  dns_clear)
+    [ -x /bin/ndmc ] || json_err "ndmc yok — Keenetic DNS yazilamaz"
+    dns_clear_target || json_err "DNS temizlenemedi"
+    json_ok "$(dns_status_json)"
+    ;;
   backup_create)
     mkdir -p "$BACKUP_DIR"
     name="kzlp_$(date '+%Y%m%d_%H%M%S').tar.gz"
     path="$BACKUP_DIR/$name"
+    _bak_extra=""
+    [ -f "$DNS_MANAGED_FILE" ] && _bak_extra="$_bak_extra $DNS_MANAGED_FILE"
+    [ -f "$DNS_PRESET_FILE" ] && _bak_extra="$_bak_extra $DNS_PRESET_FILE"
+    [ -f "$DNS_PROFILE_FILE" ] && _bak_extra="$_bak_extra $DNS_PROFILE_FILE"
+    # shellcheck disable=SC2086
     tar -czf "$path" "$ZAPRET/config" "$EXCLUDE" "$ZAPRET/ipset/zapret-hosts-user.txt" \
-      "$KZLP_DIR/settings.json" "$ZAPRET_VERSION_FILE" "$KZLP_VERSION_FILE" "$KZLP_DIR/CHANGELOG.md" 2>/dev/null \
+      "$KZLP_DIR/settings.json" "$ZAPRET_VERSION_FILE" "$KZLP_VERSION_FILE" "$KZLP_DIR/CHANGELOG.md" \
+      $_bak_extra 2>/dev/null \
       || json_err "Yedek olusturulamadi"
     sz=$(wc -c < "$path" | tr -d ' ')
     json_ok "{\"backup\":{\"name\":\"$name\",\"size\":$sz}}"
@@ -719,6 +1013,15 @@ EOF
     [ -f "$path" ] || json_err "Yedek yok"
     $INIT stop >/dev/null 2>&1
     tar -xzf "$path" -C / 2>/dev/null || json_err "Geri yukleme hatasi"
+    if [ -f "$DNS_MANAGED_FILE" ] && [ -x /bin/ndmc ]; then
+      _pre=$(dns_preset_get)
+      [ -z "$_pre" ] && _pre="custom"
+      _mips=$(dns_list_managed | tr '\n' ' ')
+      if [ -n "$_mips" ]; then
+        # shellcheck disable=SC2086
+        dns_apply_list "$_pre" $_mips || true
+      fi
+    fi
     $INIT restart >/dev/null 2>&1
     running=false
     zapret_running && running=true

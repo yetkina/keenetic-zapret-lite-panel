@@ -3,6 +3,25 @@
 Tüm önemli değişiklikler [Semantic Versioning](https://semver.org/) ile sürümlenir.
 
 
+## [1.1.10] - 2026-07-25
+
+### Eklendi
+- Yan menüde **Hakkında** sayfası: logo, sürüm, proje açıklaması, GitHub bağlantıları (KZLP / zapret / Entware), lisans notları
+
+## [1.1.9] - 2026-07-25
+
+### Eklendi
+- DNS bölümü Keenetic **DNS çözümleme profillerini** listeler (ör. Zapret DNS)
+- **Uygula** artık Sistem profili yerine **Zapret DNS** filter profiline yazar (yoksa oluşturur)
+- Sistem profili sunucuları salt okunur gösterilir
+
+## [1.1.8] - 2026-07-25
+
+### Eklendi
+- Zapret sayfasında **DNS (Sistem profili)** bölümü: Cloudflare / Google / özel IP önayarları
+- **Uygula** ile Keenetic Sistem profiline `ip name-server` yazma (`ndmc`); yalnızca KZLP’nin eklediği kayıtları kaldırma
+- DNS ayarları yedek/geri yüklemeye dahil
+
 ## [1.1.7] - 2026-05-26
 
 ### Düzeltildi
